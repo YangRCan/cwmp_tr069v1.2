@@ -8,8 +8,8 @@
 #include "cwmpdata.h"
 
 Operate operates[] = {
-    {"get", getProperty},
-    {"set", setProperty}
+    {"get", getParameter},
+    {"set", setParameter}
 };
 
 /**
@@ -23,14 +23,15 @@ void init()
 /**
  * 获取所有属性
 */
-void getAllProperties() {
+void getAllParameters() {
     
 }
 
 /**
- * 获取某属性名对应的配置的值
+ * 获取某属性名对应的配置的值，
+ * 参数 name 指的是某对应参数的完整路径
 */
-void getProperty(char* name)
+void getParameter(char* name)
 {
     
 }
@@ -39,7 +40,7 @@ void getProperty(char* name)
  * 修改某属性名对应的配置的值
  * （注：前提这个属性允许被修改）
 */
-void setProperty()
+void setParameter(char *name, char *value)
 {
     
 }
