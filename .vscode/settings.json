@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "time_utils.h": "c",
+        "cwmpdata.h": "c"
+    }
+}

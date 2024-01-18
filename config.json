@@ -1,0 +1,32 @@
+{
+	"local":	{
+		"enable":	1,
+		"interface":	"enp0s",
+		"port":	7547,
+		"date_format":	"%Y-%m-%dT%H:%M:%S",
+		"authentication":	"Digest",
+		"logging_level":	"5",
+		"username":	"tr069Client",
+		"password":	"123456",
+		"url":	"192.168.10.65"
+	},
+	"acs":	{
+		"url":	"http://192.168.10.189:7547",
+		"username":	"admin",
+		"password":	"admin",
+		"periodic_enable":	1,
+		"periodic_interval":	300,
+		"periodic_time":	"1971-02-01T02:45:56"
+	},
+	"device":	{
+		"manufacturer":	"unionman",
+		"oui":	"FFFFFF",
+		"product_class":	"unionman",
+		"serial_number":	"FFFFFF123456",
+		"hardware_version":	"example_hw_version",
+		"software_version":	"example_sw_version"
+	},
+	"atm":	{
+		"nested_key":	"123"
+	}
+}
