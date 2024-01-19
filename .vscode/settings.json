@@ -2,6 +2,7 @@
     "files.associations": {
         "time_utils.h": "c",
         "cwmpdata.h": "c",
-        "cjson.h": "c"
+        "cjson.h": "c",
+        "json.h": "c"
     }
 }

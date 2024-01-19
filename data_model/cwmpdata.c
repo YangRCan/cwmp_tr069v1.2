@@ -1,11 +1,13 @@
 /**
  * @Copyright : Yangrongcan
 */
+#include <stdio.h>
 #include <string.h>
 
 #include "parameter.h"
 #include "time_utils.h"
 #include "cwmpdata.h"
+#include "operate.h"
 
 Operate operates[] = {
     {"get", getParameter},
@@ -17,31 +19,18 @@ Operate operates[] = {
 */
 void init()
 {
-    
-}
+    init_data();
+    init_root();
 
-/**
- * 获取所有属性
-*/
-void getAllParameters() {
-    
-}
-
-/**
- * 获取某属性名对应的配置的值，
- * 参数 name 指的是某对应参数的完整路径
-*/
-void getParameter(char* name)
-{
-    
-}
-
-/**
- * 修改某属性名对应的配置的值
- * （注：前提这个属性允许被修改）
-*/
-void setParameter(char *name, char *value)
-{
+    // int count;
+    // char *str = "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.2.WANPPPConnection.1.Password";
+    // const char *delimiter = ".";
+    // char **result = GetSubstrings(str, delimiter, &count);
+    // printf("路径长度为%d\n", count);
+    // for (size_t i = 0; i < count; i++)
+    // {
+    //     printf("--%s--\n", result[i]);
+    // }
     
 }
 
@@ -66,7 +55,7 @@ int main(int argc, char *argv[])
             if (strcmp(operate, operates[i].key) == 0)
             {
                 if(strcmp(operate, "get") == 0 && strcmp(argv[2], "all") == 0) {
-                    getAllProperties();
+                    getAllParameters();
                     break;
                 } else if(strcmp(operate, "get") == 0) {
                     operates[i].function(argv[2]);

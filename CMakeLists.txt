@@ -14,9 +14,14 @@ string(TIMESTAMP COMPILE_TIME %Y%m%d-%H%M%S)
 # PROJECT_SOURCE_DIR 宏对应的值就是我们在使用cmake命令时，后面紧跟的目录，一般是工程的根目录
 configure_file(${PROJECT_SOURCE_DIR}/src/CwmpConfig.h.in ${PROJECT_SOURCE_DIR}/include/cwmp/CwmpConfig.h)
 
-include_directories(${PROJECT_SOURCE_DIR}/include/cwmp ${PROJECT_SOURCE_DIR}/include/data_model ${PROJECT_SOURCE_DIR}/include/data_model/model)
+include_directories(${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/include/cwmp ${PROJECT_SOURCE_DIR}/include/data_model ${PROJECT_SOURCE_DIR}/include/data_model/model)
+
 # CMAKE_CURRENT_SOURCE_DIR 宏表示当前访问的 CMakeLists.txt 文件所在的路径
+# src下的所有文件
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src SRC_LIST)
+
+# data_model下的所有.c文件
+file(GLOB_RECURSE DATA_SRC ${CMAKE_CURRENT_SOURCE_DIR}/data_model/*.c)
 
 #说明动态库存放位置
 # link_directories(${PROJECT_SOURCE_DIR}/lib)
@@ -40,7 +45,14 @@ if(LibXml2_FOUND)
     message(STATUS "LibXml2 found")
 endif()
 
-file(GLOB_RECURSE DATA_SRC ${CMAKE_CURRENT_SOURCE_DIR}/data_model/*.c)
+find_package(cJSON CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE cjson)
 
 # 操作参数的程序
-add_executable(cwmpdata ${DATA_SRC})
+add_executable(cwmpdata ${DATA_SRC} ${CMAKE_CURRENT_SOURCE_DIR}/src/faultCode.c)
+find_package(cJSON CONFIG REQUIRED)
+target_link_libraries(cwmpdata PRIVATE cjson)
+
+
+# cmake -G "MinGW Makefiles" .. -DCMAKE_TOOLCHAIN_FILE=D:/development_environment/vcpkg/scripts/buildsystems/vcpkg.cmake
+# cmake --build .
