@@ -7,8 +7,13 @@
 #include<ctype.h>
 
 #include"parameter.h"
+#include"faultCode.h"
 
 static struct Object *data;
+
+char **PATH;
+int count;
+const char *delimiter = ".";
 
 void init_data() {
     data = malloc(sizeof(struct Object));
@@ -19,20 +24,17 @@ void init_data() {
 /**
  * 初始化Object对象，把成员变量全初始化
 */
-void init_object_struct(struct Object *tmp) {
-    tmp->name = NULL;
+void init_object_struct(struct Object *obj) {
+    obj->name = NULL;
 
-    tmp->childType = 0;//默认为Parameter类型
-    tmp->child_object = NULL;
-    tmp->child_parameter = NULL;
+    obj->child_object = NULL;
+    obj->child_parameter = NULL;
+    obj->NumOfObject = 0;
+    obj->NumOfParameter = 0;
 
-    tmp->siblingType = 0;
-    tmp->sibling_object = NULL;
-    tmp->sibling_parameter = NULL;
-
-    tmp->placeholder = 0;
-
-    tmp->ParameterKey = NULL;
+    obj->placeholder = 0;
+    obj->limit = PresentObject;
+    obj->ParameterKey = NULL;
 }
 
 /**
@@ -64,90 +66,70 @@ void setParameter(char *path, char *value)
  * 为data参数树添加一条新obj路径
  * 返回该新路径的最后一个Object对象
 */
-struct Object *addObjectToData(char *path) {
+int addObjectToData(char *path, unsigned char limit) {
     int length = strlen(path);
-    if(path[length-1] != '.') return NULL;
-    int count;
-    const char *delimiter = ".";
-    char **subString = GetSubstrings(path, delimiter, &count);
-    int index = 0;
-
-    struct Object *obj = findFinalMatchOBject(data, subString, count, &index);
-
-    struct Object *newObj = createObject(subString, count, index + 1);
+    if(path[length-1] != '.') {
+        printf("该路径不为Object路径!{%s}, {%s}", fault_array[FAULT_9003].code, fault_array[FAULT_9003].string);
+        return FAULT_9003;
+    }
+    PATH = GetSubstrings(path);
+    if(strcmp(data->name, PATH[0]) != 0) {
+        printf("根元素不匹配, 路径错误!{%s}, {%s}", fault_array[FAULT_9003].code, fault_array[FAULT_9003].string);
+        return FAULT_9003;
+    }
     
-    struct Object *finalChild = findFinalChild(obj);
-    if(finalChild == NULL) obj->child_object = newObj;
-    else if(finalChild->placeholder >= 1){
-        newObj->placeholder = finalChild->placeholder + 1;
-        finalChild->sibling_object = newObj;
-    } else finalChild->sibling_object = newObj;
+    if(path[length - 2] == '}') count--;//扣除后面的占位符
 
-    index = 0;
-    obj = findFinalMatchOBject(data, subString, count, &index);
-    return obj;
-}
-
-/**
- * 寻找与Object路径匹配的最长路径，返回匹配路径最后的Object对象
-*/
-struct Object *findFinalMatchOBject(struct Object *obj, char **str, const int count, int *index) {
-    if(strcmp(obj->name, str[*index]) == 0 || *index >= count) {
-        struct Object *tmp = NULL;
-        ++(*index);
-        //递归查看其子节点
-        if(obj->child_object) tmp = findFinalMatchOBject(obj->child_object, str, count, index);
-        // if(obj->sibling_object) tmp2 = findFinalMatchOBject(obj->sibling_object, str, count, index);
-        return tmp ? tmp : obj;
-    } else {
-        struct Object *tmp = NULL;
-        if(obj->sibling_object) tmp = findFinalMatchOBject(obj->sibling_object, str, count, index);
-        return tmp;
-    }
-    return NULL;
-}
-
-/**
- * 递归创建object子树
-*/
-struct Object *createObject(char **str, const int count, const int index) {
-    if(index >= count) return NULL;
-    struct Object *obj = malloc(sizeof(struct Object));
-    init_object_struct(obj);
-    obj->name = str[index];
-    if(isNumeric(str[index])) {
+    struct Object *obj = createObject(data, 1);
+    obj->limit = limit;
+    if(path[length - 2] == '}') {
         obj->placeholder = 1;
+        count++;//因为释放空间时需要知道具体有多少个字符串，所以要还原
     }
 
-    if(count - 1 == index) return obj;
-
-    obj->childType = ObjectType;
-    obj->child_object = createObject(str, count, index+1);
-    return obj;
+    FreePATH();
+    return FAULT_0;
 }
 
 /**
- * 判断一个参数树节点是否存在子节点
- * 并且返回子节点的最后一个（即其子节点链表的最后一个）
- * 否则返回NULL
+ * 递归创建object子树, 返回最底层的Object节点
 */
-struct Object *findFinalChild(struct Object *obj) {
-    if(obj->childType == ParameterType && obj->child_parameter == NULL) return NULL;//没有子节点（子树）
-    // struct Object *tmp = obj->child_parameter;
-    // if(obj->childType == ObjectType) tmp = obj->child_object;
-    // while (tmp->siblingType != ParameterType || obj->sibling_parameter != NULL)
-    // {
-    //     if(tmp->siblingType == ParameterType) tmp = tmp->sibling_parameter;
-    //     else tmp = tmp->sibling_object;
-    // }
-    return obj;
+struct Object *createObject(struct Object *obj, const int index) {
+    if(index >= count) return obj;
+    printf("现在是: %s, 然后要添加儿子: %s\n", obj->name, PATH[index]);
+    struct Object *tmp = findChildObject(obj, PATH[index]);
+
+    if(!tmp) {
+        obj->NumOfObject++;
+        obj->child_object = realloc(obj->child_object, obj->NumOfObject * sizeof(struct Object));
+        tmp = &(obj->child_object[obj->NumOfObject - 1]);
+        init_object_struct(tmp);
+        tmp->name = PATH[index];
+    }
+
+    return createObject(tmp, index + 1);
+}
+
+/**
+ * 在Object节点中查找路径名称等于str的节点并返回该子节点，不存在则返回NULL
+*/
+struct Object *findChildObject(struct Object *obj, const char *str) {
+    struct Object *tmp = NULL;
+    for (size_t i = 0; i < obj->NumOfObject; i++)
+    {
+        if(strcmp(obj->child_object[i].name, str) == 0) {
+            printf("现在儿子有： %s", obj->child_object[i].name);
+            tmp = &(obj->child_object[i]);
+        }
+    }
+    return tmp;
 }
 
 /**
  * 从字符串中提取出关键字，如“local.url.port”，提取出local，url，port,并且按原顺序排列
  * 返回二位字符数组
  */
-char **GetSubstrings(const char *input, const char *delimiter, int *count)
+char **GetSubstrings(const char *input)
 {
     char *str = strdup(input); // 创建输入字符串的副本
     if (str == NULL)
@@ -158,31 +140,71 @@ char **GetSubstrings(const char *input, const char *delimiter, int *count)
 
     char **substrings = NULL;
     char *token = strtok(str, delimiter);
-    *count = 0;
+    count = 0;
 
     while (token != NULL)
     {
         // 重新分配内存，它可以调整之前分配的内存块的大小
-        substrings = realloc(substrings, (*count + 1) * sizeof(char *));
+        substrings = realloc(substrings, (count + 1) * sizeof(char *));
         if (substrings == NULL)
         {
             perror("Memory allocation failed");
             exit(EXIT_FAILURE);
         }
 
-        substrings[*count] = strdup(token);
-        if (substrings[*count] == NULL)
+        substrings[count] = strdup(token);
+        if (substrings[count] == NULL)
         {
             perror("Memory allocation failed");
             exit(EXIT_FAILURE);
         }
 
-        (*count)++;
+        (count)++;
         token = strtok(NULL, delimiter);
     }
 
     free(str); // 释放副本字符串的内存
     return substrings;
+}
+
+/**
+ * 释放全局变量PATH的空间
+*/
+void FreePATH() {
+    if(PATH) {
+        for (size_t i = 0; i < count; ++i) {
+            free(PATH[i]); // 释放每个子字符串
+        }
+        free(PATH); // 释放存储指针的数组
+        PATH = NULL;
+    }
+}
+
+/**
+ * 输出数据模型树中所有的路径
+*/
+void iterateData(struct Object *obj, char *str) {
+    if(obj == NULL) {
+        iterateData(data, NULL);
+        return;
+    }
+    char *destination = NULL;
+    // if(str) destination = (char *)malloc(strlen(str) + strlen(obj->name) + 2);  // 初始分配足够大的内存
+    // else destination = (char *)malloc(strlen(obj->name) + 2);
+    // if (destination == NULL) {
+    //     perror("Memory allocation failed");
+    //     return;
+    // }
+    // if(str) strcat(destination, str);
+    // if(obj->name) strcat(destination, obj->name);
+    // strcat(destination, ".");
+    // if(obj->NumOfObject <= 0) printf("%s\n", destination);
+    printf("This object is %s\n", obj->name);
+    for (size_t i = 0; i < obj->NumOfObject; i++)
+    {
+        iterateData(&(obj->child_object[i]), destination);
+    }
+    free(destination);
 }
 
 /**

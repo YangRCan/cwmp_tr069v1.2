@@ -1,10 +1,10 @@
 #include<stdio.h>
 #include<stdbool.h>
-
+#include<stdlib.h>
 #include"operate.h"
 #include"faultCode.h"
 
-cJSON* data;
+cJSON* rootJSON;
 
 /**
  * 初始化数据,从文件中读取数据，若无则创建一个空的cJSON实例
@@ -24,9 +24,9 @@ bool init_root() {
         fread(jsonString, 1, fileSize, file);
         jsonString[fileSize] = '\0';
 
-        data = cJSON_Parse(jsonString);
+        rootJSON = cJSON_Parse(jsonString);
     } else {
-        data = cJSON_CreateObject();
+        rootJSON = cJSON_CreateObject();
     }
 
     fclose(file);//关闭文件
@@ -52,18 +52,18 @@ bool save_data() {
     return 1;
 }
 
-int addObjectToData() {
+// int addObjectToData() {
 
-}
+// }
 
-int addParamToData() {
+// int addParamToData() {
 
-}
+// }
 
-cJSON *findFinalMatchObject() {
+// cJSON *findFinalMatchObject() {
 
-}
+// }
 
-cJSON *createObject() {
+// cJSON *createObject() {
     
-}
+// }

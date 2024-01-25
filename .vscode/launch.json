@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/cwmpdata.exe",
-            "args": ["set", "Device.DeviceInfo.SpecVersion", "123"],
+            "args": [],
             "stopAtEntry": false,
             "cwd": "E:\\project\\cwmp_tr069v1.2\\build",
             "environment": [],

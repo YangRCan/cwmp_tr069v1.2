@@ -6,50 +6,54 @@
 
 #include<stdbool.h>
 
-#define ROOT "Device"
+#define ROOT "Device" //数据模型的根Object
 
-#define ParameterType 0
-#define ObjectType 1
-#define NOT_WRITABLE 0
+// 对parameter的权限
+#define READONLY 0
 #define WRITABLE 1
 #define Notification_Off 0
 #define Passive_Notification 1
 #define Active_Notification 1
 
+// 对Object的权限
+#define PresentObject 0
+#define CreateObject 1 //包括了AddObject和DeletteObject
+#define AddObject 2
+#define DeletteObject 3
+
+
 typedef struct
 {
     char *name;//参数名
     char *value;// 值
-    bool writable;// 1 表示可写， 0 表示不可写(已有宏定义)
-    int notification;// 0 表示通知关闭， 1 表示被动通知， 2 表示主动通知(已有宏定义)
+    unsigned char writable;// 1 表示可写， 0 表示不可写(已有宏定义)，若为只读则不需要保存到data_model
+    unsigned char notification;// 0 表示通知关闭， 1 表示被动通知， 2 表示主动通知(已有宏定义)
     /*
         值类型包括：string、int、unsignedInt、boolean、dateTime、base64、anySimpleType
     */
     char *valueType;// 值类型
+    void (*function)(); //与该参数相关的函数
 } Parameter;
 
 struct Object
 {
     char *name;//对象名
     // 孩子
-    Parameter *child_parameter;
-    struct Object *child_object;
-    bool childType;//0 为Parameter类型， 1 为Object类型(已有宏定义)
+    Parameter *child_parameter; //数组
+    struct Object *child_object; //数组
 
-    //兄弟
-    Parameter *sibling_parameter;
-    struct Object *sibling_object;
-    bool siblingType;//0 为Parameter类型， 1 为Object类型(已有宏定义)
+    size_t NumOfParameter, NumOfObject;
 
     /*
-        占位符累计数量， 默认为 0，表示这一层(该节点与其所有兄弟)不是占位符, 只是普通的Object路径； 如果 ≥1，说明这一层是占位符{i}, 若该点被删除，则应该将该值赋值给其兄弟
-        占位符的值 i 被直接写入到成员变量name中；
-        删除某该层某节点时，该值不变；若这一层占符被全被删除，则丢弃该值；
+        占位符累计数量， 默认为 0，表示该节点的子节点不是占位符； 如果 ≥1，说明子节点是占位符{i},且肯定有Object类型子节点
+        每添加子节点，占位符的值 i 加一后被直接写入到子节点的成员变量name中；
         此外，该层新添加节点时，name值应该为该值 +1。
-        若该值 ≥1，则兄弟节点的类型必须为Object。
+        在程序重启后要从json文件中获取最大值
+        若该值 ≥1，则子节点的类型必须为Object。
     */
-    int placeholder;
-
+    unsigned int placeholder;
+    // 必须存在 PresentObject， 可创建和删除 CreateObject， 可创建 AddObject， 可删除 DeletteObject (已有宏定义)
+    unsigned char limit;
     char *ParameterKey;
 };
 
@@ -61,11 +65,12 @@ void getAllParameters();
 void getParameter(char *path);
 void setParameter(char *path, char *value);
 
-struct Object *addObjectToData(char *path);
-struct Object *findFinalMatchOBject(struct Object *obj, char **str, const int count, int *index);
-struct Object *createObject(char **str, const int count, const int index);
-struct Object *findFinalChild(struct Object *obj);
-char **GetSubstrings(const char *input, const char *delimiter, int *count);
+int addObjectToData(char *path, unsigned char limit);
+struct Object *createObject(struct Object *obj, const int index);
+struct Object *findChildObject(struct Object *obj, const char *str);
+char **GetSubstrings(const char *input);
+void FreePATH();
+void iterateData(struct Object *obj, char *str);
 bool isNumeric(const char *str);
 
 #endif

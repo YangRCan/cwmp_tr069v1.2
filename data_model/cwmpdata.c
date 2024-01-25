@@ -22,6 +22,11 @@ void init()
     init_data();
     init_root();
 
+    int Faultcode = addObjectToData("Device.DHCPv4.Server.{i}.", CreateObject);
+    Faultcode = addObjectToData("Device.WiFi.AccessPoint.", CreateObject);
+    iterateData(NULL, NULL);
+    
+    
     // int count;
     // char *str = "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.2.WANPPPConnection.1.Password";
     // const char *delimiter = ".";

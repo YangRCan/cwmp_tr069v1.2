@@ -3,6 +3,7 @@
         "time_utils.h": "c",
         "cwmpdata.h": "c",
         "cjson.h": "c",
-        "json.h": "c"
+        "json.h": "c",
+        "operate.h": "c"
     }
 }
