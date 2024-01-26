@@ -24,6 +24,7 @@ void init()
 
     int Faultcode = addObjectToData("Device.DHCPv4.Server.{i}.", CreateObject);
     Faultcode = addObjectToData("Device.WiFi.AccessPoint.", CreateObject);
+    Faultcode = addObjectToData("Device.WiFi.Radio.", CreateObject);
     iterateData(NULL, NULL);
     
     

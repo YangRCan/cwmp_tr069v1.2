@@ -96,7 +96,6 @@ int addObjectToData(char *path, unsigned char limit) {
 */
 struct Object *createObject(struct Object *obj, const int index) {
     if(index >= count) return obj;
-    printf("现在是: %s, 然后要添加儿子: %s\n", obj->name, PATH[index]);
     struct Object *tmp = findChildObject(obj, PATH[index]);
 
     if(!tmp) {
@@ -104,7 +103,7 @@ struct Object *createObject(struct Object *obj, const int index) {
         obj->child_object = realloc(obj->child_object, obj->NumOfObject * sizeof(struct Object));
         tmp = &(obj->child_object[obj->NumOfObject - 1]);
         init_object_struct(tmp);
-        tmp->name = PATH[index];
+        tmp->name = strdup(PATH[index]);
     }
 
     return createObject(tmp, index + 1);
@@ -118,7 +117,7 @@ struct Object *findChildObject(struct Object *obj, const char *str) {
     for (size_t i = 0; i < obj->NumOfObject; i++)
     {
         if(strcmp(obj->child_object[i].name, str) == 0) {
-            printf("现在儿子有： %s", obj->child_object[i].name);
+            // printf("现在儿子有： %s\n", obj->child_object[i].name);
             tmp = &(obj->child_object[i]);
         }
     }
@@ -189,17 +188,24 @@ void iterateData(struct Object *obj, char *str) {
         return;
     }
     char *destination = NULL;
-    // if(str) destination = (char *)malloc(strlen(str) + strlen(obj->name) + 2);  // 初始分配足够大的内存
-    // else destination = (char *)malloc(strlen(obj->name) + 2);
-    // if (destination == NULL) {
-    //     perror("Memory allocation failed");
-    //     return;
-    // }
-    // if(str) strcat(destination, str);
-    // if(obj->name) strcat(destination, obj->name);
-    // strcat(destination, ".");
-    // if(obj->NumOfObject <= 0) printf("%s\n", destination);
-    printf("This object is %s\n", obj->name);
+    size_t totalLength = 0;
+
+    if (str) totalLength += strlen(str);
+    if (obj->name) totalLength += strlen(obj->name);
+    totalLength += 2;
+
+    destination = (char *)malloc(totalLength);
+    if (destination == NULL) {
+        perror("Memory allocation failed");
+        return;
+    }
+    destination[0] = '\0';
+
+    if(str) strcat(destination, str);
+    if(obj->name) strcat(destination, obj->name);
+    strcat(destination, ".");
+    if(obj->NumOfObject <= 0) printf("%s\n", destination);
+
     for (size_t i = 0; i < obj->NumOfObject; i++)
     {
         iterateData(&(obj->child_object[i]), destination);
