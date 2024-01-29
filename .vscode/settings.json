@@ -4,6 +4,10 @@
         "cwmpdata.h": "c",
         "cjson.h": "c",
         "json.h": "c",
-        "operate.h": "c"
+        "operate.h": "c",
+        "array": "c",
+        "string": "c",
+        "string_view": "c",
+        "parameter.h": "c"
     }
 }

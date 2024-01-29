@@ -19,13 +19,10 @@ Operate operates[] = {
 */
 void init()
 {
-    init_data();
+    init_dataModel();
     init_root();
 
-    int Faultcode = addObjectToData("Device.DHCPv4.Server.{i}.", CreateObject);
-    Faultcode = addObjectToData("Device.WiFi.AccessPoint.", CreateObject);
-    Faultcode = addObjectToData("Device.WiFi.Radio.", CreateObject);
-    iterateData(NULL, NULL);
+    iterateDataModel(NULL, NULL);
     
     
     // int count;

@@ -8,17 +8,23 @@
 
 #include"parameter.h"
 #include"faultCode.h"
+#include"tr181.h"
+#include"tr135.h"
 
-static struct Object *data;
+static struct Object *dataModel;
 
-char **PATH;
-int count;
-const char *delimiter = ".";
+char **PATH;//完整路径
+int count;//路径节点数
+const char *delimiter = ".";//路径分隔符
 
-void init_data() {
-    data = malloc(sizeof(struct Object));
-    init_object_struct(data);
-    data->name = ROOT;
+void init_dataModel() {
+    dataModel = malloc(sizeof(struct Object));
+    init_object_struct(dataModel);
+    dataModel->name = ROOT;
+
+    // 此处添加入数据模型初始化函数
+    init_tr181_object();
+    init_tr181_parameter();
 }
 
 /**
@@ -32,9 +38,29 @@ void init_object_struct(struct Object *obj) {
     obj->NumOfObject = 0;
     obj->NumOfParameter = 0;
 
-    obj->placeholder = 0;
+    obj->nextPlaceholder = 0;
     obj->limit = PresentObject;
     obj->ParameterKey = NULL;
+    obj->function = NULL;
+}
+
+/**
+ * 初始化Parameter对象，把成员变量全初始化
+*/
+void init_parameter_struct(Parameter *param) {
+    param->name = NULL;
+    param->writable = READONLY;
+    param->notification = Notification_Off;
+    param->valueType = NULL;
+    param->function = NULL;
+}
+
+void set_parameter_struct(Parameter *param, char *name, unsigned char writable, unsigned char notification, char *valueType, void (*function)()) {
+    param->name = name;
+    param->writable = writable;
+    param->notification = notification;
+    param->valueType = valueType;
+    param->function = function;
 }
 
 /**
@@ -63,50 +89,49 @@ void setParameter(char *path, char *value)
 }
 
 /**
- * 为data参数树添加一条新obj路径
+ * 为data model树添加一条新obj路径
  * 返回该新路径的最后一个Object对象
 */
-int addObjectToData(char *path, unsigned char limit) {
+int addObjectToDataModel(char *path, unsigned char limit, void (*function)()) {
     int length = strlen(path);
     if(path[length-1] != '.') {
-        printf("该路径不为Object路径!{%s}, {%s}", fault_array[FAULT_9003].code, fault_array[FAULT_9003].string);
+        printf("该路径不为Object路径!{\" %s \"}, {\" %s \"}\n", fault_array[FAULT_9003].code, fault_array[FAULT_9003].string);
         return FAULT_9003;
     }
     PATH = GetSubstrings(path);
-    if(strcmp(data->name, PATH[0]) != 0) {
-        printf("根元素不匹配, 路径错误!{%s}, {%s}", fault_array[FAULT_9003].code, fault_array[FAULT_9003].string);
+    if(strcmp(dataModel->name, PATH[0]) != 0) {
+        printf("根元素不匹配, 路径错误!{\" %s \"}, {\" %s \"}\n", fault_array[FAULT_9003].code, fault_array[FAULT_9003].string);
         return FAULT_9003;
     }
     
-    if(path[length - 2] == '}') count--;//扣除后面的占位符
-
-    struct Object *obj = createObject(data, 1);
+    struct Object *obj = createObjectToDataModel(dataModel, 1); // 添加Object路径，存在不会创新路径
     obj->limit = limit;
+    obj->function = function;
     if(path[length - 2] == '}') {
-        obj->placeholder = 1;
-        count++;//因为释放空间时需要知道具体有多少个字符串，所以要还原
+        obj->nextPlaceholder = 1;//表示该对象下个实例可用的占位符序号
     }
 
     FreePATH();
+    free(path);
     return FAULT_0;
 }
 
 /**
  * 递归创建object子树, 返回最底层的Object节点
 */
-struct Object *createObject(struct Object *obj, const int index) {
+struct Object *createObjectToDataModel(struct Object *obj, const int index) {
     if(index >= count) return obj;
     struct Object *tmp = findChildObject(obj, PATH[index]);
 
     if(!tmp) {
         obj->NumOfObject++;
-        obj->child_object = realloc(obj->child_object, obj->NumOfObject * sizeof(struct Object));
+        obj->child_object = (struct Object *)realloc(obj->child_object, obj->NumOfObject * sizeof(struct Object));
         tmp = &(obj->child_object[obj->NumOfObject - 1]);
         init_object_struct(tmp);
         tmp->name = strdup(PATH[index]);
     }
 
-    return createObject(tmp, index + 1);
+    return createObjectToDataModel(tmp, index + 1);
 }
 
 /**
@@ -122,6 +147,94 @@ struct Object *findChildObject(struct Object *obj, const char *str) {
         }
     }
     return tmp;
+}
+
+/**
+ * 添加parameter到dataModel中，即dataModel树的叶子
+ * path以'.'分隔的最后一个元素为parameter的name
+*/
+int addParameterToDataModel(char *path, unsigned char writable, unsigned char notification, char *valueType, void (*function)()) {
+    int length = strlen(path);
+    if(path[length-1] == '.') {
+        printf("该路径不为Parameter路径!{\" %s \"}, {\" %s \"}\n", fault_array[FAULT_9003].code, fault_array[FAULT_9003].string);
+        return FAULT_9003;
+    }
+    PATH = GetSubstrings(path);
+    if(strcmp(dataModel->name, PATH[0]) != 0) {
+        printf("根元素不匹配, 路径错误!{\" %s \"}, {\" %s \"}\n", fault_array[FAULT_9003].code, fault_array[FAULT_9003].string);
+        return FAULT_9003;
+    }
+
+    count--;// 去掉parameter
+    struct Object *obj = createObjectToDataModel(dataModel, 1);//先添加Object路径，存在不会创新路径
+
+    obj->NumOfParameter++;
+    obj->child_parameter = (Parameter *)realloc(obj->child_parameter, obj->NumOfParameter * sizeof(Parameter));
+    set_parameter_struct(&(obj->child_parameter[obj->NumOfParameter - 1]), PATH[count], writable, notification, valueType, function);
+
+    count++;// 恢复，为了正常释放PATH内存
+
+
+    FreePATH();
+    free(path);
+    return FAULT_0;
+}
+
+/**
+ * 释放全局变量PATH的空间
+*/
+void FreePATH() {
+    if(PATH) {
+        for (size_t i = 0; i < count; ++i) {
+            free(PATH[i]); // 释放每个子字符串
+        }
+        free(PATH); // 释放存储指针的数组
+        PATH = NULL;
+    }
+}
+
+/**
+ * 输出数据模型树中所有的路径
+*/
+void iterateDataModel(struct Object *obj, char *str) {
+    if(obj == NULL) {
+        iterateDataModel(dataModel, NULL);
+        return;
+    }
+    char *destination = NULL;
+    size_t totalLength = 0;
+
+    if (str) totalLength += strlen(str);
+    if (obj->name) totalLength += strlen(obj->name);
+    totalLength += 2;
+
+    destination = (char *)malloc(totalLength);
+    if (destination == NULL) {
+        perror("Memory allocation failed");
+        return;
+    }
+    destination[0] = '\0';
+
+    if(str) strcat(destination, str);
+    if(obj->name) strcat(destination, obj->name);
+    strcat(destination, ".");
+    printf("%s\n", destination);
+
+
+
+    // 输出参数节点
+    if(obj->NumOfParameter > 0) {
+        for (size_t i = 0; i < obj->NumOfParameter; i++)
+        {
+            printf("%s%s\n", destination, obj->child_parameter[i].name);
+        }
+    }
+
+    for (size_t i = 0; i < obj->NumOfObject; i++)
+    {
+        iterateDataModel(&(obj->child_object[i]), destination);
+    }
+    free(destination);
 }
 
 /**
@@ -167,51 +280,29 @@ char **GetSubstrings(const char *input)
 }
 
 /**
- * 释放全局变量PATH的空间
+ * 两个字符串拼接，返回新的字符串
 */
-void FreePATH() {
-    if(PATH) {
-        for (size_t i = 0; i < count; ++i) {
-            free(PATH[i]); // 释放每个子字符串
-        }
-        free(PATH); // 释放存储指针的数组
-        PATH = NULL;
+char *concatenateStrings(const char *str1, const char *str2){
+    // 计算两个字符串的长度
+    size_t len1 = strlen(str1);
+    size_t len2 = strlen(str2);
+
+    // 分配足够的内存(+1是为了'\0')
+    char *result = (char*)malloc(len1 + len2 + 1);
+    
+    // 检查内存分配是否成功
+    if(result == NULL) {
+        printf("内存不足!{\" %s \"}, {\" %s \"}\n", fault_array[FAULT_9004].code, fault_array[FAULT_9004].string);
+        return NULL;
     }
+
+    // 拷贝两个字符串
+    strcpy(result, str1);
+    strcat(result, str2);
+
+    return result;
 }
 
-/**
- * 输出数据模型树中所有的路径
-*/
-void iterateData(struct Object *obj, char *str) {
-    if(obj == NULL) {
-        iterateData(data, NULL);
-        return;
-    }
-    char *destination = NULL;
-    size_t totalLength = 0;
-
-    if (str) totalLength += strlen(str);
-    if (obj->name) totalLength += strlen(obj->name);
-    totalLength += 2;
-
-    destination = (char *)malloc(totalLength);
-    if (destination == NULL) {
-        perror("Memory allocation failed");
-        return;
-    }
-    destination[0] = '\0';
-
-    if(str) strcat(destination, str);
-    if(obj->name) strcat(destination, obj->name);
-    strcat(destination, ".");
-    if(obj->NumOfObject <= 0) printf("%s\n", destination);
-
-    for (size_t i = 0; i < obj->NumOfObject; i++)
-    {
-        iterateData(&(obj->child_object[i]), destination);
-    }
-    free(destination);
-}
 
 /**
  * 判断字符串是否为数字
