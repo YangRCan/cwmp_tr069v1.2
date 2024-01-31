@@ -19,6 +19,7 @@
 #define AddObject 2 //可创建
 #define DeletteObject 3 //可删除
 
+#define DATAFILE "../data.json"
 
 typedef struct
 {
@@ -60,11 +61,13 @@ void init_dataModel();
 void init_object_struct(struct Object *tmp);
 void init_parameter_struct(Parameter *param);
 void set_parameter_struct(Parameter *param, char *name, unsigned char writable, unsigned char notification, char *valueType, void (*function)());
+void init_json_file();
 
 // 具体操作对应的函数
 void getAllParameters();
 void getParameter(char *path);
 void setParameter(char *path, char *value);
+void addObject(char *path);
 
 // 数据模型相关的函数
 int addObjectToDataModel(char *path, unsigned char limit, void (*function)());
@@ -73,6 +76,9 @@ struct Object *findChildObject(struct Object *obj, const char *str);
 int addParameterToDataModel(char *path, unsigned char writable, unsigned char notification, char *valueType, void (*function)());
 void FreePATH();
 void iterateDataModel(struct Object *obj, char *str);
+int checkObject();
+// 实际数据相关的函数
+int addObjectToData();
 
 
 char **GetSubstrings(const char *input);

@@ -13,9 +13,9 @@
 
 static struct Object *dataModel;
 
-char **PATH;//完整路径
-int count;//路径节点数
-const char *delimiter = ".";//路径分隔符
+static char **PATH;//完整路径
+static int count;//路径节点数
+static const char *delimiter = ".";//路径分隔符
 
 void init_dataModel() {
     dataModel = malloc(sizeof(struct Object));
@@ -25,6 +25,9 @@ void init_dataModel() {
     // 此处添加入数据模型初始化函数
     init_tr181_object();
     init_tr181_parameter();
+
+    // 根据数据模型树创建出JSON结构数据
+    init_json_file();
 }
 
 /**
@@ -55,12 +58,22 @@ void init_parameter_struct(Parameter *param) {
     param->function = NULL;
 }
 
+/**
+ * 设置参数的各个成员变量
+*/
 void set_parameter_struct(Parameter *param, char *name, unsigned char writable, unsigned char notification, char *valueType, void (*function)()) {
-    param->name = name;
+    param->name = strdup(name);
     param->writable = writable;
     param->notification = notification;
     param->valueType = valueType;
     param->function = function;
+}
+
+/**
+ * 
+*/
+void init_json_file(){
+
 }
 
 /**
@@ -86,6 +99,25 @@ void getParameter(char* path)
 void setParameter(char *path, char *value)
 {
     
+}
+
+/**
+ * 添加Object实例
+ * 需要检查该Object是否为可创建，即数据模型中该路径后为{i}占位符, 且支持PresentObject、CreateObject或AddObject权限
+*/
+void addObject(char *path){
+    int length = strlen(path);
+    if(path[length-1] != '.') {
+        printf("该路径不为Object路径!{\" %s \"}, {\" %s \"}\n", fault_array[FAULT_9003].code, fault_array[FAULT_9003].string);
+    }
+    PATH = GetSubstrings(path);
+    if(strcmp(dataModel->name, PATH[0]) != 0) {
+        printf("根元素不匹配, 路径错误!{\" %s \"}, {\" %s \"}\n", fault_array[FAULT_9003].code, fault_array[FAULT_9003].string);
+    }
+
+    addObjectToData();
+
+    FreePATH();
 }
 
 /**
@@ -236,6 +268,52 @@ void iterateDataModel(struct Object *obj, char *str) {
     }
     free(destination);
 }
+
+/**
+ * 检测Object路径是否符合数据模型
+*/
+int checkObject(){
+    struct Object *obj = dataModel;
+    int index = 1;
+    while (obj && index < count)
+    {
+        obj = findChildObject(obj, PATH[index]);
+        index++;
+    }
+
+    if(index < count) {
+        printf("Object路径错误!{\" %s \"}, {\" %s \"}\n", fault_array[FAULT_9003].code, fault_array[FAULT_9003].string);
+        return FAULT_9003;
+    }
+    return FAULT_0;
+}
+
+/**
+ * 检测Object是否可以实例化, 可以则返回其占位符{i}
+*/
+struct Object *ObjectCanInstantiate() {
+    struct Object *obj = createObjectToDataModel(dataModel, 1);// 获取最后一个Object
+    for (size_t i = 0; i < obj->NumOfObject; i++)
+    {
+        if(strcmp(obj->child_object[i].name, "{i}") == 0) {
+            return &(obj->child_object[i]);
+        }
+    }
+    return NULL;
+}
+
+/**
+ * 真正添加Object实例的函数
+*/
+int addObjectToData(){
+    int faultCode = checkObject();
+    if(faultCode > 0) return faultCode;
+
+    struct Object *obj = ObjectCanInstantiate();
+
+    
+}
+
 
 /**
  * 从字符串中提取出关键字，如“local.url.port”，提取出local，url，port,并且按原顺序排列

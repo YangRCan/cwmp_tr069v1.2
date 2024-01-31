@@ -24,7 +24,7 @@ void init()
 
     iterateDataModel(NULL, NULL);
     
-    
+    addObject("Device.DHCPv4.Server.Pool.");
     // int count;
     // char *str = "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.2.WANPPPConnection.1.Password";
     // const char *delimiter = ".";

@@ -3,7 +3,6 @@
 
 #include<cjson/cJSON.h>
 
-#define DATAFILE "../data_model.json"
 
 extern cJSON* rootJSON;
 
