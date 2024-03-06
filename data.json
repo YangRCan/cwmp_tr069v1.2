@@ -1,0 +1,65 @@
+{
+	"DeviceInfo":	{
+		"MemoryStatus":	{
+			"Total":	"",
+			"Free":	""
+		},
+		"SpecVersion":	"",
+		"ProvisioningCode":	"",
+		"Manufacturer":	"",
+		"ManufacturerOUI":	"",
+		"ProductClass":	"",
+		"SerialNumber":	"",
+		"HardwareVersion":	"",
+		"SoftwareVersion":	"",
+		"IP":	"",
+		"UpTime":	"",
+		"DeviceLog":	""
+	},
+	"ManagementServer":	{
+		"URL":	"",
+		"Username":	"",
+		"Password":	"",
+		"PeriodicInformEnable":	"",
+		"PeriodicInformInterval":	"",
+		"PeriodicInformTime":	"",
+		"ConnectionRequestURL":	"",
+		"ConnectionRequestUsername":	"",
+		"ConnectionRequestPassword":	"",
+		"ParameterKey":	""
+	},
+	"DHCPv4":	{
+		"Server":	{
+			"Pool":	{
+				
+			},
+			"Enable":	""
+		}
+	},
+	"IP":	{
+		"Interface":	{
+		},
+		"Diagnostics":	{
+			"IPPing":	{
+				"DiagnosticsState":	"",
+				"Host":	"",
+				"NumberOfRepetitions":	"",
+				"Timeout":	"",
+				"DataBlockSize":	"",
+				"SuccessCount":	"",
+				"FailureCount":	"",
+				"AverageResponseTime":	"",
+				"MinimumResponseTime":	"",
+				"MaximumResponseTime":	""
+			}
+		}
+	},
+	"WiFi":	{
+		"Radio":	{
+		},
+		"SSID":	{
+		},
+		"AccessPoint":	{
+		}
+	}
+}

@@ -7,7 +7,6 @@
 #include "parameter.h"
 #include "time_utils.h"
 #include "cwmpdata.h"
-#include "operate.h"
 
 Operate operates[] = {
     {"get", getParameter},
@@ -19,9 +18,14 @@ Operate operates[] = {
 */
 void init()
 {
-    init_data();
-    init_root();
+    init_root();//必须先执行
+    init_dataModel();
 
+    // 打印dataModal
+    // iterateDataModel(NULL, NULL);
+    
+    addObject("Device.DHCPv4.Server.Pool.");
+    addObject("Device.DHCPv4.Server.Pool.");
     // int count;
     // char *str = "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.2.WANPPPConnection.1.Password";
     // const char *delimiter = ".";

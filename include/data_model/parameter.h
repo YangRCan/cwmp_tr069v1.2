@@ -5,67 +5,96 @@
 #define _CWMP_PARAMETER_
 
 #include<stdbool.h>
+#include<cjson/cJSON.h>
 
-#define ROOT "Device"
+#define DATAFILE "../data.json"
 
-#define ParameterType 0
-#define ObjectType 1
-#define NOT_WRITABLE 0
+// 对parameter的权限
+#define READONLY 0
 #define WRITABLE 1
 #define Notification_Off 0
 #define Passive_Notification 1
-#define Active_Notification 1
+#define Active_Notification 2
+
+// 对Object的权限
+#define PresentObject 0 //必须存在
+#define CreateObject 1 //包括了AddObject和DeletteObject, 可创建和删除
+#define AddObject 2 //可创建
+#define DeletteObject 3 //可删除
+
 
 typedef struct
 {
     char *name;//参数名
-    char *value;// 值
-    bool writable;// 1 表示可写， 0 表示不可写(已有宏定义)
-    int notification;// 0 表示通知关闭， 1 表示被动通知， 2 表示主动通知(已有宏定义)
+    // char *value;// 值
+    unsigned char writable;// 1 表示可写， 0 表示不可写(已有宏定义)，若为只读则不需要保存到data_model
+    unsigned char notification;// 0 表示通知关闭， 1 表示被动通知， 2 表示主动通知(已有宏定义)
     /*
         值类型包括：string、int、unsignedInt、boolean、dateTime、base64、anySimpleType
     */
     char *valueType;// 值类型
+    void (*function)(); //与该参数相关的函数
 } Parameter;
 
 struct Object
 {
     char *name;//对象名
     // 孩子
-    Parameter *child_parameter;
-    struct Object *child_object;
-    bool childType;//0 为Parameter类型， 1 为Object类型(已有宏定义)
+    Parameter *child_parameter; //数组
+    struct Object *child_object; //数组
 
-    //兄弟
-    Parameter *sibling_parameter;
-    struct Object *sibling_object;
-    bool siblingType;//0 为Parameter类型， 1 为Object类型(已有宏定义)
+    size_t NumOfParameter, NumOfObject;
 
     /*
-        占位符累计数量， 默认为 0，表示这一层(该节点与其所有兄弟)不是占位符, 只是普通的Object路径； 如果 ≥1，说明这一层是占位符{i}, 若该点被删除，则应该将该值赋值给其兄弟
-        占位符的值 i 被直接写入到成员变量name中；
-        删除某该层某节点时，该值不变；若这一层占符被全被删除，则丢弃该值；
-        此外，该层新添加节点时，name值应该为该值 +1。
-        若该值 ≥1，则兄弟节点的类型必须为Object。
+        下一个可用的占位符序号， 默认为 0，表示该节点的子节点不是占位符； 如果 ≥1，说明子节点是占位符{i},且肯定有Object类型子节点
+        每添加子节点，占位符的值 i 被直接写入到子节点的成员变量name中；
+        此外，该层添加实例时，该变量+1
+        在程序重启后要从json文件中获取该值
     */
-    int placeholder;
-
+    unsigned int nextPlaceholder;
+    // 必须存在 PresentObject， 可创建和删除 CreateObject， 可创建 AddObject， 可删除 DeletteObject (已有宏定义)
+    unsigned char limit;
     char *ParameterKey;
+    void (*function)(); //与该参数相关的函数
 };
 
-void init_data();
+// 初始化对应的函数
+void init_dataModel();
 void init_object_struct(struct Object *tmp);
+void init_parameter_struct(Parameter *param);
+void set_parameter_struct(Parameter *param, char *name, unsigned char writable, unsigned char notification, char *valueType, void (*function)());
+void init_json_file();
 
-
+// 具体操作对应的函数
 void getAllParameters();
 void getParameter(char *path);
 void setParameter(char *path, char *value);
+void addObject(char *path);
 
-struct Object *addObjectToData(char *path);
-struct Object *findFinalMatchOBject(struct Object *obj, char **str, const int count, int *index);
-struct Object *createObject(char **str, const int count, const int index);
-struct Object *findFinalChild(struct Object *obj);
-char **GetSubstrings(const char *input, const char *delimiter, int *count);
+// 数据模型相关的函数
+int addObjectToDataModel(char *path, unsigned char limit, void (*function)());
+struct Object *createObjectToDataModel(struct Object *obj, const int index);
+struct Object *findChildObject(struct Object *obj, const char *str);
+int addParameterToDataModel(char *path, unsigned char writable, unsigned char notification, char *valueType, void (*function)());
+void FreePATH();
+void iterateDataModel(struct Object *obj, char *str);
+int checkObjectPath();
+int checkParameterPath();
+// 实际数据相关的函数
+int addObjectToData();
+
+
+// 操作数据文件的函数
+bool init_root();
+bool save_data();
+cJSON* createObjectPathToJsonData();
+void createParameterPathToJsonData();
+void createObjectToJsonData(struct Object *placeholder);
+
+int GetPlaceholderMaxNum(cJSON *node);
+
+char **GetSubstrings(const char *input);
+char *concatenateStrings(const char *str1, const char *str2);
 bool isNumeric(const char *str);
 
 #endif
