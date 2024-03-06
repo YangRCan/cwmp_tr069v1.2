@@ -128,7 +128,8 @@ int test_JSON() {
     char *modifiedJsonString = cJSON_Print(root);
     printf("修改后的 JSON 字符串: %s\n", modifiedJsonString);
 
-    cJSON_Delete(root);
     free(modifiedJsonString);
+    cJSON_Delete(root);
+    printf("good");
     return 0;
 }

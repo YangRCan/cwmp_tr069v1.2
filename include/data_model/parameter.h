@@ -5,6 +5,9 @@
 #define _CWMP_PARAMETER_
 
 #include<stdbool.h>
+#include<cjson/cJSON.h>
+
+#define DATAFILE "../data.json"
 
 // 对parameter的权限
 #define READONLY 0
@@ -19,7 +22,6 @@
 #define AddObject 2 //可创建
 #define DeletteObject 3 //可删除
 
-#define DATAFILE "../data.json"
 
 typedef struct
 {
@@ -76,10 +78,20 @@ struct Object *findChildObject(struct Object *obj, const char *str);
 int addParameterToDataModel(char *path, unsigned char writable, unsigned char notification, char *valueType, void (*function)());
 void FreePATH();
 void iterateDataModel(struct Object *obj, char *str);
-int checkObject();
+int checkObjectPath();
+int checkParameterPath();
 // 实际数据相关的函数
 int addObjectToData();
 
+
+// 操作数据文件的函数
+bool init_root();
+bool save_data();
+cJSON* createObjectPathToJsonData();
+void createParameterPathToJsonData();
+void createObjectToJsonData(struct Object *placeholder);
+
+int GetPlaceholderMaxNum(cJSON *node);
 
 char **GetSubstrings(const char *input);
 char *concatenateStrings(const char *str1, const char *str2);

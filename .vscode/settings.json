@@ -8,6 +8,10 @@
         "array": "c",
         "string": "c",
         "string_view": "c",
-        "parameter.h": "c"
+        "parameter.h": "c",
+        "faultcode.h": "c",
+        "stdbool.h": "c",
+        "stdio.h": "c",
+        "stdlib.h": "c"
     }
 }

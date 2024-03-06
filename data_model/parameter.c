@@ -12,6 +12,7 @@
 #include"tr135.h"
 
 static struct Object *dataModel;
+static cJSON* rootJSON;
 
 static char **PATH;//完整路径
 static int count;//路径节点数
@@ -143,6 +144,8 @@ int addObjectToDataModel(char *path, unsigned char limit, void (*function)()) {
         obj->nextPlaceholder = 1;//表示该对象下个实例可用的占位符序号
     }
 
+    createObjectPathToJsonData();//并在数据文件中创建该路径
+
     FreePATH();
     free(path);
     return FAULT_0;
@@ -203,6 +206,8 @@ int addParameterToDataModel(char *path, unsigned char writable, unsigned char no
     obj->NumOfParameter++;
     obj->child_parameter = (Parameter *)realloc(obj->child_parameter, obj->NumOfParameter * sizeof(Parameter));
     set_parameter_struct(&(obj->child_parameter[obj->NumOfParameter - 1]), PATH[count], writable, notification, valueType, function);
+
+    createParameterPathToJsonData();//把参数Path添加到json文件中
 
     count++;// 恢复，为了正常释放PATH内存
 
@@ -272,7 +277,7 @@ void iterateDataModel(struct Object *obj, char *str) {
 /**
  * 检测Object路径是否符合数据模型
 */
-int checkObject(){
+int checkObjectPath(){
     struct Object *obj = dataModel;
     int index = 1;
     while (obj && index < count)
@@ -303,16 +308,180 @@ struct Object *ObjectCanInstantiate() {
 }
 
 /**
+ * 检查输入的参数路径是否符合已存在的数据模型(即路径是否在数据模型中存在)
+*/
+int checkParameterPath() {
+    count--;
+    int faultCode = checkObjectPath();
+    if(faultCode > 0) return faultCode;
+    count++;
+
+    struct Object *obj = dataModel;
+    obj = createObjectToDataModel(obj, 1);
+    for (size_t i = 0; i < obj->NumOfParameter; i++)
+    {
+        if(strcmp(obj->child_parameter[i].name, PATH[count-1]) == 0) {
+            return FAULT_0;//路径正确
+        }
+    }
+    return FAULT_9003;
+}
+
+
+/**
  * 真正添加Object实例的函数
 */
 int addObjectToData(){
-    int faultCode = checkObject();
+    int faultCode = checkObjectPath();
     if(faultCode > 0) return faultCode;
 
     struct Object *obj = ObjectCanInstantiate();
 
-    
+    createObjectToJsonData(obj);
 }
+
+
+
+
+/**
+ * 初始化数据,从文件中读取数据，若无则创建一个空的cJSON实例
+*/
+bool init_root() {
+    FILE *file= fopen(DATAFILE, "r");
+    if(file == NULL) {
+        printf("打开文件失败!");
+        return 0;
+    }
+    fseek(file, 0, SEEK_END);
+    long fileSize = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    if(fileSize > 0) {
+        char* jsonString = (char*)malloc(fileSize + 1);
+        fread(jsonString, 1, fileSize, file);
+        jsonString[fileSize] = '\0';
+
+        rootJSON = cJSON_Parse(jsonString);
+        free(jsonString);
+    } else {
+        rootJSON = cJSON_CreateObject();
+    }
+
+    fclose(file);//关闭文件
+
+    return true;
+}
+
+/**
+ * 将数据保存到文件中
+*/
+bool save_data() {
+    FILE* file = fopen(DATAFILE, "w");
+    if(file == NULL) {
+        printf("打开文件失败!");
+        return false;
+    }
+
+    char* jsonString = cJSON_Print(rootJSON);//转成字符串
+    fprintf(file, "%s", jsonString);//写入
+    fclose(file);//关闭
+    // free(jsonString);//释放字符串空间
+
+    return true;
+}
+
+/**
+ * 把Path中的Object路径添加到Json文件中
+*/
+cJSON* createObjectPathToJsonData() {
+    int index = 1;
+    cJSON *node = rootJSON;
+    cJSON *targetNode  = node;
+    while (index < count)
+    {
+        targetNode = cJSON_GetObjectItem(targetNode, PATH[index]);
+        if (targetNode) node = targetNode;
+        else break;
+        index++;
+    }
+
+    while (index < count) {
+        if(PATH[index][strlen(PATH[index])-1] == '}') break;
+        targetNode = cJSON_CreateObject();
+        cJSON_AddItemToObject(node, PATH[index], targetNode);
+        node = targetNode;
+        index++;
+    }
+    save_data();
+    if(index < count) return NULL;
+    return node;
+}
+
+/**
+ * 把参数Path路径添加到Json文件中，如果其中已存在则不会创建
+*/
+void createParameterPathToJsonData() {
+    cJSON* node = createObjectPathToJsonData();
+    if(!node) return;
+    if(!cJSON_GetObjectItemCaseSensitive(node, PATH[count])) {
+        cJSON_AddStringToObject(node, PATH[count], "");
+        save_data();
+    }
+}
+
+/**
+ * 向Json文件中创建新的Object实例
+ * placeholder: dataModel中PATH对应的占位符object对象
+*/
+void createObjectToJsonData(struct Object *placeholder){
+    cJSON* node = createObjectPathToJsonData();//获取要添加的Object的Json对象
+    cJSON* target = cJSON_CreateObject();//创建空JSON对象
+
+    //在JSON文件中获取最大实例号并加1
+    placeholder->nextPlaceholder = GetPlaceholderMaxNum(node) + 1;
+
+    //将占位符数字转为字符串
+    int len = 0, num = placeholder->nextPlaceholder;
+    while (num)
+    {
+        len++;
+        num /= 10;
+    }
+    char *str = (char *)malloc(len+1);
+    sprintf(str, "%d", placeholder->nextPlaceholder);
+
+    //将实例插入到JSON文件中
+    cJSON_AddItemToObject(node, str, target);
+    save_data();
+    placeholder->nextPlaceholder++;
+}
+
+/**
+ * 从JSON文件中取出某占位符位置的最大实例号
+*/
+int GetPlaceholderMaxNum(cJSON *node) {
+    cJSON* child = node->child;
+    int maxNum = 0;
+    // cJSON *maxNumObject = NULL;
+
+    while (child != NULL)
+    {
+        const char *name = child->string;
+        if(name != NULL && isdigit(name[0])) {
+            int num = atoi(name);
+
+            if(num > maxNum) {
+                maxNum = num;
+                // maxNumObject = child;
+            }
+        }
+
+        child = child->next;
+    }
+    
+    return maxNum;
+}
+
 
 
 /**
