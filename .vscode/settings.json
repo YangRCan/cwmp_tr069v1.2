@@ -12,6 +12,7 @@
         "faultcode.h": "c",
         "stdbool.h": "c",
         "stdio.h": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "tr181.h": "c"
     }
 }

@@ -58,16 +58,24 @@ struct Object
     void (*function)(); //与该参数相关的函数
 };
 
+// ParameterInfoStruct定义
+typedef struct 
+{
+    char *name; // 可为部分路径或完整路径
+    bool writable; // 若为部分路径即Object，则表示是否可使用addObject添加实例，即该路径的下一Object是否为占位符
+} ParameterInfoStruct;
+
+
 // 初始化对应的函数
 void init_dataModel();
 void init_object_struct(struct Object *tmp);
 void init_parameter_struct(Parameter *param);
 void set_parameter_struct(Parameter *param, char *name, unsigned char writable, unsigned char notification, char *valueType, void (*function)());
-void init_json_file();
 
 // 具体操作对应的函数
 void getAllParameters();
-void getParameter(char *path);
+void getParameter(char *path, char** str);
+void getParameterName(char *path, char *NextLevel, ParameterInfoStruct ***parameterList);
 void setParameter(char *path, char *value);
 void addObject(char *path);
 
@@ -80,19 +88,21 @@ void FreePATH();
 void iterateDataModel(struct Object *obj, char *str);
 int checkObjectPath();
 int checkParameterPath();
-// 实际数据相关的函数
 int addObjectToData();
 
 
-// 操作数据文件的函数
+// 操作JSON数据文件的函数
 bool init_root();
 bool save_data();
 cJSON* createObjectPathToJsonData();
 void createParameterPathToJsonData();
 void createObjectToJsonData(struct Object *placeholder);
-
+void ObjectInstanceAttributeSupplementation(cJSON *node, struct Object *obj);
 int GetPlaceholderMaxNum(cJSON *node);
+cJSON* getParameterJSON();
+void printAllParameters(cJSON *jsonObj, char *str);
 
+// 类型转换或判断等相关的函数
 char **GetSubstrings(const char *input);
 char *concatenateStrings(const char *str1, const char *str2);
 bool isNumeric(const char *str);

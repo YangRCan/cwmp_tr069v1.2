@@ -18,6 +18,15 @@ static char **PATH;//完整路径
 static int count;//路径节点数
 static const char *delimiter = ".";//路径分隔符
 
+/**######################
+##                     ##
+##     初始化函数       ##
+##                     ##
+######################**/
+
+/**
+ * 初始化DataModel的函数(该变量属于全局static)
+*/
 void init_dataModel() {
     dataModel = malloc(sizeof(struct Object));
     init_object_struct(dataModel);
@@ -26,9 +35,6 @@ void init_dataModel() {
     // 此处添加入数据模型初始化函数
     init_tr181_object();
     init_tr181_parameter();
-
-    // 根据数据模型树创建出JSON结构数据
-    init_json_file();
 }
 
 /**
@@ -70,26 +76,77 @@ void set_parameter_struct(Parameter *param, char *name, unsigned char writable, 
     param->function = function;
 }
 
-/**
- * 
-*/
-void init_json_file(){
 
-}
+/**#################################
+##                                ##
+##    get、set等操作的入口函数      ##
+##                                ##
+#################################**/
 
 /**
  * 获取所有属性
 */
 void getAllParameters() {
-    
+    char root[] = ROOT;
+    printAllParameters(rootJSON, root);
 }
 
 /**
  * 获取某属性名对应的配置的值，
  * 参数 name 指的是某对应参数的完整路径
 */
-void getParameter(char* path)
+void getParameter(char* path, char** str)
 {
+    int length = strlen(path);
+    if(path[length-1] == '.') {
+        printf("该路径不为Parameter路径!{\" %s \"}, {\" %s \"}\n", fault_array[FAULT_9003].code, fault_array[FAULT_9003].string);
+        return;
+    }
+    PATH = GetSubstrings(path);
+    if(strcmp(dataModel->name, PATH[0]) != 0) {
+        printf("根元素不匹配, 路径错误!{\" %s \"}, {\" %s \"}\n", fault_array[FAULT_9003].code, fault_array[FAULT_9003].string);
+        return;
+    }
+
+    int faultCode = checkParameterPath();
+    if(faultCode > 0) {
+        printf("{\" %s \"}, {\" %s \"}\n", fault_array[faultCode].code, fault_array[faultCode].string);
+        return;
+    }
+
+    cJSON * node = getParameterJSON();
+    if(node) {
+        *str = node->valuestring;
+    }
+}
+
+/**
+ * NextLevel 的值只能是 0 或 1。0 表示列出该对象参数及其所有子对象或参数。
+ * 1 表示列出路径中包含的所有参数。 如果路径为空且NextLevel为1，则仅列出ROOT
+*/
+void getParameterName(char *path, char *NextLevel, ParameterInfoStruct ***parameterList) {
+    int nextLevel;
+    if(isNumeric(NextLevel)) nextLevel = atoi(NextLevel);
+    else {
+        printf("{\" %s \"}, {\" %s \"}\n", fault_array[FAULT_9003].code, fault_array[FAULT_9003].string);
+        return;
+    }
+    
+    if(!path && nextLevel) {
+        if(parameterList) {
+            **parameterList = (ParameterInfoStruct*)malloc(sizeof(parameterList));
+            (**parameterList)->name = concatenateStrings(ROOT ,".");
+            (**parameterList)->writable = 0;
+        }
+        else printf("{ \" Object \" : \" %s \"}, { \" writable \" : \" %s \"}\n", concatenateStrings(ROOT ,"."), "0");
+        return;
+    }
+
+    // 判断路径类型
+    int length = strlen(path), pathType = 0; //pathType: 0为部分路径即Object, 1为完整路径即Parameter
+    if(path[length-1] == '.') pathType = 0;
+    else pathType = 1;
+
     
 }
 
@@ -99,8 +156,40 @@ void getParameter(char* path)
 */
 void setParameter(char *path, char *value)
 {
+    int length = strlen(path);
+    if(path[length-1] == '.') {
+        printf("该路径不为Parameter路径!{\" %s \"}, {\" %s \"}\n", fault_array[FAULT_9003].code, fault_array[FAULT_9003].string);
+        return;
+    }
+    PATH = GetSubstrings(path);
+    if(strcmp(dataModel->name, PATH[0]) != 0) {
+        printf("根元素不匹配, 路径错误!{\" %s \"}, {\" %s \"}\n", fault_array[FAULT_9003].code, fault_array[FAULT_9003].string);
+        return;
+    }
+
+    int faultCode = checkParameterPath();
+    if(faultCode > 0) {
+        printf("{\" %s \"}, {\" %s \"}\n", fault_array[faultCode].code, fault_array[faultCode].string);
+        return;
+    } else if(faultCode < 0) {
+        printf("{\" %s \"}, {\" %s \"}\n", fault_array[FAULT_9008].code, fault_array[FAULT_9008].string);
+        return;
+    }
     
+    cJSON * node = getParameterJSON();
+    if(node) {
+        cJSON_SetValuestring(node, value);
+        save_data();
+        printf("Successfully modified");
+    }
 }
+
+
+/**#################################
+##                                ##
+##      DataModel相关的函数        ##
+##                                ##
+#################################**/
 
 /**
  * 添加Object实例
@@ -110,10 +199,12 @@ void addObject(char *path){
     int length = strlen(path);
     if(path[length-1] != '.') {
         printf("该路径不为Object路径!{\" %s \"}, {\" %s \"}\n", fault_array[FAULT_9003].code, fault_array[FAULT_9003].string);
+        return;
     }
     PATH = GetSubstrings(path);
     if(strcmp(dataModel->name, PATH[0]) != 0) {
         printf("根元素不匹配, 路径错误!{\" %s \"}, {\" %s \"}\n", fault_array[FAULT_9003].code, fault_array[FAULT_9003].string);
+        return;
     }
 
     addObjectToData();
@@ -157,6 +248,7 @@ int addObjectToDataModel(char *path, unsigned char limit, void (*function)()) {
 struct Object *createObjectToDataModel(struct Object *obj, const int index) {
     if(index >= count) return obj;
     struct Object *tmp = findChildObject(obj, PATH[index]);
+    if(isNumeric(PATH[index])) tmp = findChildObject(obj, "{i}");
 
     if(!tmp) {
         obj->NumOfObject++;
@@ -282,7 +374,8 @@ int checkObjectPath(){
     int index = 1;
     while (obj && index < count)
     {
-        obj = findChildObject(obj, PATH[index]);
+        if(isNumeric(PATH[index])) obj = findChildObject(obj, "{i}");
+        else obj = findChildObject(obj, PATH[index]);
         index++;
     }
 
@@ -314,14 +407,16 @@ int checkParameterPath() {
     count--;
     int faultCode = checkObjectPath();
     if(faultCode > 0) return faultCode;
-    count++;
+    
 
     struct Object *obj = dataModel;
     obj = createObjectToDataModel(obj, 1);
+    count++;
     for (size_t i = 0; i < obj->NumOfParameter; i++)
     {
         if(strcmp(obj->child_parameter[i].name, PATH[count-1]) == 0) {
-            return FAULT_0;//路径正确
+            if(obj->child_parameter[i].writable == WRITABLE) return FAULT_0;
+            else return -1; //不可set修改值
         }
     }
     return FAULT_9003;
@@ -341,7 +436,11 @@ int addObjectToData(){
 }
 
 
-
+/**#################################
+##                                ##
+##     操作JSON文件相关的函数       ##
+##                                ##
+#################################**/
 
 /**
  * 初始化数据,从文件中读取数据，若无则创建一个空的cJSON实例
@@ -406,7 +505,7 @@ cJSON* createObjectPathToJsonData() {
     }
 
     while (index < count) {
-        if(PATH[index][strlen(PATH[index])-1] == '}') break;
+        if(PATH[index][strlen(PATH[index])-1] == '}' || isNumeric(PATH[index])) break;
         targetNode = cJSON_CreateObject();
         cJSON_AddItemToObject(node, PATH[index], targetNode);
         node = targetNode;
@@ -436,6 +535,10 @@ void createParameterPathToJsonData() {
 void createObjectToJsonData(struct Object *placeholder){
     cJSON* node = createObjectPathToJsonData();//获取要添加的Object的Json对象
     cJSON* target = cJSON_CreateObject();//创建空JSON对象
+    if(!node) {
+        printf("该路径不正确, 可能上级实例不存在: {\" %s \"}, {\" %s \"}\n", fault_array[FAULT_9003].code, fault_array[FAULT_9003].string);
+        return;
+    }
 
     //在JSON文件中获取最大实例号并加1
     placeholder->nextPlaceholder = GetPlaceholderMaxNum(node) + 1;
@@ -452,8 +555,30 @@ void createObjectToJsonData(struct Object *placeholder){
 
     //将实例插入到JSON文件中
     cJSON_AddItemToObject(node, str, target);
-    save_data();
     placeholder->nextPlaceholder++;
+
+    // 给新创建的实例补充属性
+    ObjectInstanceAttributeSupplementation(target, placeholder);
+    save_data();
+}
+
+/**
+ * 给新创建的对象实例补充其应该有的属性(递归)
+*/
+void ObjectInstanceAttributeSupplementation(cJSON *node, struct Object *obj) {
+    cJSON *target;
+    for (size_t i = 0; i < obj->NumOfObject; i++)
+    {
+        if(strcmp(obj->child_object[i].name, "{i}") == 0) continue;
+        target = cJSON_CreateObject();
+        ObjectInstanceAttributeSupplementation(target, &(obj->child_object[i]));
+        cJSON_AddItemToObject(node, obj->child_object[i].name, target);
+    }
+    
+    for (size_t i = 0; i < obj->NumOfParameter; i++)
+    {
+        cJSON_AddStringToObject(node, obj->child_parameter[i].name, "");
+    }
 }
 
 /**
@@ -482,7 +607,65 @@ int GetPlaceholderMaxNum(cJSON *node) {
     return maxNum;
 }
 
+/**
+ * 获取Parameter在JSON文件中对应的cJSON对象
+*/
+cJSON* getParameterJSON() {
+    int index = 1;
+    cJSON *node = rootJSON;
+    while (index < count)
+    {
+        node = cJSON_GetObjectItemCaseSensitive(node, PATH[index]);
+        if(!node) break;
+        index++;
+    }
+    
+    if(index < count) {
+        printf("该Parameter路径不为正确!{\" %s \"}, {\" %s \"}\n", fault_array[FAULT_9003].code, fault_array[FAULT_9003].string);
+    }
+    return node;
+}
 
+/**
+ * 打印出所有的参数和值
+*/
+void printAllParameters(cJSON *jsonObj, char *str){
+    char *destination = NULL;
+    size_t Length = 0;
+
+    if(str) Length += strlen(str);
+    if(jsonObj->string) Length += strlen(jsonObj->string);
+    Length += 2;
+
+    destination = (char *)malloc(Length);
+    if(destination == NULL) {
+        perror("Memory allocation failed");
+        return;
+    }
+    destination[0] = '\0';
+
+    if(str) strcat(destination, str);
+    if(jsonObj->string) strcat(destination, jsonObj->string);
+    strcat(destination, ".");
+
+
+    cJSON *child = jsonObj->child;
+    while (child != NULL)
+    {
+        if(child->type == cJSON_Object) printAllParameters(child, destination);
+        else {
+            printf("{ \" parameter \" : \" %s%s \"}, { \" value \" : \" %s \"}\n", destination, child->string, child->valuestring);
+        }
+        child = child->next;
+    }
+    
+}
+
+/**#################################
+##                                ##
+##    类型转换或判断等相关的函数     ##
+##                                ##
+#################################**/
 
 /**
  * 从字符串中提取出关键字，如“local.url.port”，提取出local，url，port,并且按原顺序排列
@@ -560,9 +743,9 @@ bool isNumeric(const char *str) {
     // 检查每个字符是否是数字
     for (int i = 0; i < length; i++) {
         if (!isdigit(str[i])) {
-            return 0; // 如果有非数字字符，则返回0
+            return false; // 如果有非数字字符，则返回0
         }
     }
     
-    return 1; // 字符串中的所有字符都是数字
+    return true; // 字符串中的所有字符都是数字
 }

@@ -4,7 +4,7 @@
 			"Total":	"",
 			"Free":	""
 		},
-		"SpecVersion":	"",
+		"SpecVersion":	"1.0",
 		"ProvisioningCode":	"",
 		"Manufacturer":	"",
 		"ManufacturerOUI":	"",
@@ -17,7 +17,7 @@
 		"DeviceLog":	""
 	},
 	"ManagementServer":	{
-		"URL":	"",
+		"URL":	"192.168.1.1",
 		"Username":	"",
 		"Password":	"",
 		"PeriodicInformEnable":	"",
@@ -31,7 +31,6 @@
 	"DHCPv4":	{
 		"Server":	{
 			"Pool":	{
-				
 			},
 			"Enable":	""
 		}
