@@ -46,4 +46,6 @@ typedef struct
 
 extern fault_code fault_array[];
 
+void printErrorInfo(int faultCode);
+
 #endif

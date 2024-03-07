@@ -27,3 +27,7 @@ fault_code fault_array[]=
 	[FAULT_9018] = {"9018", "Server", "Download failure: file corrupted"},
 	[FAULT_9019] = {"9019", "Server", "Download failure: file authentication failure"}
 };
+
+void printErrorInfo(int faultCode) {
+	printf("{\" %s \"}, {\" %s \"}\n", fault_array[faultCode].code, fault_array[faultCode].string);
+}
