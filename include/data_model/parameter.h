@@ -27,7 +27,7 @@ typedef struct
 {
     char *name;//参数名
     // char *value;// 值
-    unsigned char writable;// 1 表示可写， 0 表示不可写(已有宏定义)，若为只读则不需要保存到data_model
+    unsigned char writable;// 1 表示可写， 0 表示只读(已有宏定义)，若为只读则不需要保存到JSON文件
     unsigned char notification;// 0 表示通知关闭， 1 表示被动通知， 2 表示主动通知(已有宏定义)
     /*
         值类型包括：string、int、unsignedInt、boolean、dateTime、base64、anySimpleType
@@ -45,6 +45,12 @@ struct Object
 
     size_t NumOfParameter, NumOfObject;
 
+    /**
+     * 1 表示可写， 0 表示只读(已有宏定义)
+     * 表示AddObject是否可用于添加此对象的新实例。（不包括实例号）
+     * 表示DeleteObject是否可用于删除此特定实例。（包括实例号）
+    */
+    unsigned char writable;
     /*
         下一个可用的占位符序号， 默认为 0，表示该节点的子节点不是占位符； 如果 ≥1，说明子节点是占位符{i},且肯定有Object类型子节点
         每添加子节点，占位符的值 i 被直接写入到子节点的成员变量name中；
@@ -80,7 +86,7 @@ void setParameter(char *path, char *value);
 void addObject(char *path);
 
 // 数据模型相关的函数
-int addObjectToDataModel(char *path, unsigned char limit, void (*function)());
+int addObjectToDataModel(char *path, unsigned char writable,unsigned char limit, void (*function)());
 struct Object *createObjectToDataModel(struct Object *obj, const int index);
 struct Object *findChildObject(struct Object *obj, const char *str);
 int addParameterToDataModel(char *path, unsigned char writable, unsigned char notification, char *valueType, void (*function)());
@@ -100,6 +106,8 @@ void createObjectToJsonData(struct Object *placeholder);
 void ObjectInstanceAttributeSupplementation(cJSON *node, struct Object *obj);
 int GetPlaceholderMaxNum(cJSON *node);
 cJSON* getParameterJSON();
+ParameterInfoStruct** getChildFromJson(char *path);
+void getDescendantsFromJson(const char *path, cJSON *object, ParameterInfoStruct ***List, int *const index);
 void printAllParameters(cJSON *jsonObj, char *str);
 
 // 类型转换或判断等相关的函数

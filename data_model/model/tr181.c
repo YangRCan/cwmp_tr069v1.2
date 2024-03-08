@@ -10,37 +10,37 @@ void init_tr181_object() {
     char *path;
     // DeviceInfo
     path = concatenateStrings(ROOT, ".DeviceInfo."); //子路径与根拼接, concatenateStrings申请的path内存在addObjectToDataModel中释放
-    addObjectToDataModel(path, PresentObject, NULL); //在数据模型创建该Object路径
-    addObjectToDataModel(concatenateStrings(ROOT ,".DeviceInfo.MemoryStatus."), PresentObject, NULL); //两种写法均可
+    addObjectToDataModel(path, READONLY, PresentObject, NULL); //在数据模型创建该Object路径
+    addObjectToDataModel(concatenateStrings(ROOT ,".DeviceInfo.MemoryStatus."), READONLY, PresentObject, NULL); //两种写法均可
 
     // ManagementServer
-    addObjectToDataModel(concatenateStrings(ROOT ,".ManagementServer."), PresentObject, NULL);
+    addObjectToDataModel(concatenateStrings(ROOT ,".ManagementServer."), READONLY, PresentObject, NULL);
     
     // DHCPv4
-    addObjectToDataModel(concatenateStrings(ROOT ,".DHCPv4."), PresentObject, NULL);
-    addObjectToDataModel(concatenateStrings(ROOT ,".DHCPv4.Server."), PresentObject, NULL);
-    addObjectToDataModel(concatenateStrings(ROOT ,".DHCPv4.Server.Pool."), PresentObject, NULL);
-    addObjectToDataModel(concatenateStrings(ROOT ,".DHCPv4.Server.Pool.{i}."), PresentObject, NULL);
+    addObjectToDataModel(concatenateStrings(ROOT ,".DHCPv4."), READONLY, PresentObject, NULL);
+    addObjectToDataModel(concatenateStrings(ROOT ,".DHCPv4.Server."), READONLY, PresentObject, NULL);
+    addObjectToDataModel(concatenateStrings(ROOT ,".DHCPv4.Server.Pool."), WRITABLE, PresentObject, NULL);
+    addObjectToDataModel(concatenateStrings(ROOT ,".DHCPv4.Server.Pool.{i}."), WRITABLE, PresentObject, NULL);
 
     // IP
-    addObjectToDataModel(concatenateStrings(ROOT ,".IP."), PresentObject, NULL);
-    addObjectToDataModel(concatenateStrings(ROOT ,".IP.Interface."), PresentObject, NULL);
-    addObjectToDataModel(concatenateStrings(ROOT ,".IP.Interface.{i}."), PresentObject, NULL);
-    addObjectToDataModel(concatenateStrings(ROOT ,".IP.Interface.{i}.IPv4Address."), PresentObject, NULL);
-    addObjectToDataModel(concatenateStrings(ROOT ,".IP.Interface.{i}.IPv4Address.{i}."), PresentObject, NULL);
-    addObjectToDataModel(concatenateStrings(ROOT ,".IP.Interface.{i}.Stats."), PresentObject, NULL);
-    addObjectToDataModel(concatenateStrings(ROOT ,".IP.Diagnostics."), PresentObject, NULL);
-    addObjectToDataModel(concatenateStrings(ROOT ,".IP.Diagnostics.IPPing."), PresentObject, NULL);
+    addObjectToDataModel(concatenateStrings(ROOT ,".IP."), READONLY, PresentObject, NULL);
+    addObjectToDataModel(concatenateStrings(ROOT ,".IP.Interface."), WRITABLE, PresentObject, NULL);
+    addObjectToDataModel(concatenateStrings(ROOT ,".IP.Interface.{i}."), WRITABLE, PresentObject, NULL);
+    addObjectToDataModel(concatenateStrings(ROOT ,".IP.Interface.{i}.IPv4Address."), WRITABLE, PresentObject, NULL);
+    addObjectToDataModel(concatenateStrings(ROOT ,".IP.Interface.{i}.IPv4Address.{i}."), WRITABLE, PresentObject, NULL);
+    addObjectToDataModel(concatenateStrings(ROOT ,".IP.Interface.{i}.Stats."), READONLY, PresentObject, NULL);
+    addObjectToDataModel(concatenateStrings(ROOT ,".IP.Diagnostics."), READONLY, PresentObject, NULL);
+    addObjectToDataModel(concatenateStrings(ROOT ,".IP.Diagnostics.IPPing."), READONLY, PresentObject, NULL);
 
     // WiFi
-    addObjectToDataModel(concatenateStrings(ROOT ,".WiFi."), PresentObject, NULL);
-    addObjectToDataModel(concatenateStrings(ROOT ,".WiFi.Radio."), PresentObject, NULL);
-    addObjectToDataModel(concatenateStrings(ROOT ,".WiFi.Radio.{i}."), PresentObject, NULL);
-    addObjectToDataModel(concatenateStrings(ROOT ,".WiFi.SSID."), PresentObject, NULL);
-    addObjectToDataModel(concatenateStrings(ROOT ,".WiFi.SSID.{i}."), PresentObject, NULL);
-    addObjectToDataModel(concatenateStrings(ROOT ,".WiFi.AccessPoint."), PresentObject, NULL);
-    addObjectToDataModel(concatenateStrings(ROOT ,".WiFi.AccessPoint.{i}."), PresentObject, NULL);
-    addObjectToDataModel(concatenateStrings(ROOT ,".WiFi.AccessPoint.{i}.Security."), PresentObject, NULL);
+    addObjectToDataModel(concatenateStrings(ROOT ,".WiFi."), READONLY, PresentObject, NULL);
+    addObjectToDataModel(concatenateStrings(ROOT ,".WiFi.Radio."), READONLY, PresentObject, NULL);
+    addObjectToDataModel(concatenateStrings(ROOT ,".WiFi.Radio.{i}."), READONLY, PresentObject, NULL);
+    addObjectToDataModel(concatenateStrings(ROOT ,".WiFi.SSID."), WRITABLE, PresentObject, NULL);
+    addObjectToDataModel(concatenateStrings(ROOT ,".WiFi.SSID.{i}."), WRITABLE, PresentObject, NULL);
+    addObjectToDataModel(concatenateStrings(ROOT ,".WiFi.AccessPoint."), WRITABLE, PresentObject, NULL);
+    addObjectToDataModel(concatenateStrings(ROOT ,".WiFi.AccessPoint.{i}."), WRITABLE, PresentObject, NULL);
+    addObjectToDataModel(concatenateStrings(ROOT ,".WiFi.AccessPoint.{i}.Security."), READONLY, PresentObject, NULL);
 }
 
 void init_tr181_parameter() {

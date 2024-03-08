@@ -49,6 +49,7 @@ void init_object_struct(struct Object *obj)
     obj->child_parameter = NULL;
     obj->NumOfObject = 0;
     obj->NumOfParameter = 0;
+    obj->writable = READONLY;
 
     obj->nextPlaceholder = 0;
     obj->limit = PresentObject;
@@ -151,9 +152,12 @@ void getParameterName(char *path, char *NextLevel, ParameterInfoStruct ***parame
     {
         if (parameterList)
         {
-            **parameterList = (ParameterInfoStruct *)malloc(sizeof(parameterList));
-            (**parameterList)->name = concatenateStrings(ROOT, ".");
-            (**parameterList)->writable = 0;
+            *parameterList = (ParameterInfoStruct **)malloc(2 * sizeof(ParameterInfoStruct *));
+
+            (*parameterList)[0] = (ParameterInfoStruct *)malloc(sizeof(ParameterInfoStruct));
+            (*parameterList)[0]->name = concatenateStrings(ROOT, ".");
+            (*parameterList)[0]->writable = 0;
+            (*parameterList)[1] = NULL; // 结束标志
         }
         else
             printf("{ \" Object \" : \" %s \"}, { \" writable \" : \" %s \"}\n", concatenateStrings(ROOT, "."), "0");
@@ -161,13 +165,45 @@ void getParameterName(char *path, char *NextLevel, ParameterInfoStruct ***parame
     }
 
     // 判断路径类型
-    int length = strlen(path), pathType = 0; // pathType: 0为部分路径即Object, 1为完整路径即Parameter
-    if (path[length - 1] == '.')
-        pathType = 0;
-    else
-        pathType = 1;
+    // int length = strlen(path), pathType = 0; // pathType: 0为部分路径即Object, 1为完整路径即Parameter
+    // if (path[length - 1] == '.')
+    //     pathType = 0;
+    // else
+    //     pathType = 1;
 
-    
+    PATH = GetSubstrings(path);
+    if (!path)
+    {
+        PATH = GetSubstrings("Device.");
+        path = "Device.";
+    }
+
+    if (nextLevel)
+    { // 包含所有参数和作为ParameterPath参数给定对象的下一级子对象的对象（如果有的话）
+        *parameterList = getChildFromJson(path);
+    }
+    else
+    {
+        /*
+            包含名称与ParameterPath参数完全匹配的Parameter或对象，
+            以及ParameterPath参数给定的对象的子代的所有Parameters和对象（如果有的话）
+        */
+        cJSON *node = rootJSON;
+        int index = 1;
+        while (index < count)
+        {
+            node = cJSON_GetObjectItem(node, PATH[index]);
+            if (!node)
+                break;
+            index++;
+        }
+        if (node)
+        {
+            *parameterList = (ParameterInfoStruct **)malloc(1 * sizeof(ParameterInfoStruct *));
+            int index = 0;
+            getDescendantsFromJson(path, node, parameterList, &index);
+        }
+    }
 }
 
 /**
@@ -244,7 +280,7 @@ void addObject(char *path)
  * 为data model树添加一条新obj路径
  * 返回该新路径的最后一个Object对象
  */
-int addObjectToDataModel(char *path, unsigned char limit, void (*function)())
+int addObjectToDataModel(char *path, unsigned char writable,unsigned char limit, void (*function)())
 {
     int length = strlen(path);
     if (path[length - 1] != '.')
@@ -260,6 +296,7 @@ int addObjectToDataModel(char *path, unsigned char limit, void (*function)())
     }
 
     struct Object *obj = createObjectToDataModel(dataModel, 1); // 添加Object路径，存在不会创新路径
+    obj->writable = writable;
     obj->limit = limit;
     obj->function = function;
     if (path[length - 2] == '}')
@@ -712,6 +749,113 @@ cJSON *getParameterJSON()
 }
 
 /**
+ * 从Json中获取路径的子属性（包括对象类型）
+ */
+ParameterInfoStruct **getChildFromJson(char *path)
+{
+    cJSON *node = rootJSON;
+    int index = 1;
+    while (index < count)
+    {
+        node = cJSON_GetObjectItem(node, PATH[index]);
+        if (!node)
+            break;
+        index++;
+    }
+
+    ParameterInfoStruct **List;
+
+    if (node)
+    {
+        List = (ParameterInfoStruct **)malloc(sizeof(ParameterInfoStruct *));
+        node = node->child;
+        index = 1;
+        while (node != NULL)
+        {
+            size_t pathLen = strlen(path);
+            size_t nodeLen = strlen(node->string);
+            char *str = (char *)malloc(pathLen + nodeLen + 2);
+            strcpy(str, path);
+            strcat(str, node->string);
+            if (node->type == cJSON_Object)
+                strcat(str, ".");
+
+            ParameterInfoStruct *info = (ParameterInfoStruct *)malloc(sizeof(ParameterInfoStruct));
+            info->name = str;
+            info->writable = false;
+
+            List = (ParameterInfoStruct **)realloc(List, (index + 1) * sizeof(ParameterInfoStruct *));
+            List[index - 1] = info;
+            List[index] = NULL; // 添加结束标志
+
+            node = node->next;
+            index++;
+        }
+
+        return List;
+    }
+    else
+    {
+        return NULL;
+    }
+}
+
+/**
+ * 从Json中获取路径的所有子代属性
+ */
+void getDescendantsFromJson(const char *path, cJSON *object, ParameterInfoStruct ***List, int *const index)
+{
+    if (object == NULL)
+    {
+        getDescendantsFromJson(path, rootJSON, List, index);
+    }
+
+    char *name;
+    int pathLength = strlen(path);
+    if (object->type == cJSON_Object)
+    {
+        // printf("Object: %s\n", object->string);
+        int Length = pathLength + 2;
+        if (object->string)
+            Length += strlen(object->string);
+        name = (char *)malloc(Length);
+        strcpy(name, path);
+        if (object->string)
+        {
+            strcat(name, object->string);
+            strcat(name, ".");
+        }
+        ParameterInfoStruct *objectInfo = (ParameterInfoStruct *)malloc(sizeof(ParameterInfoStruct));
+        objectInfo->name = name;
+        objectInfo->writable = false;
+        (*index)++;
+        *List = (ParameterInfoStruct **)realloc(*List, (*index) * sizeof(ParameterInfoStruct *));
+        (*List)[*index - 1] = objectInfo;
+    }
+    else
+    {
+        // printf("Key: %s, Value: %s\n", object->string, cJSON_Print(object));
+        int Length = pathLength + strlen(object->string) + 1;
+        name = (char *)malloc(Length);
+        strcpy(name, path);
+        strcat(name, object->string);
+        ParameterInfoStruct *parameterInfo = (ParameterInfoStruct *)malloc(sizeof(ParameterInfoStruct));
+        parameterInfo->name = name;
+        parameterInfo->writable = false;
+        (*index)++;
+        *List = (ParameterInfoStruct **)realloc(*List, (*index) * sizeof(ParameterInfoStruct *));
+        (*List)[*index - 1] = parameterInfo;
+    }
+
+    cJSON *child = object->child;
+    while (child != NULL)
+    {
+        getDescendantsFromJson(name, child, List, index);
+        child = child->next;
+    }
+}
+
+/**
  * 打印出所有的参数和值
  */
 void printAllParameters(cJSON *jsonObj, char *str)
@@ -764,6 +908,8 @@ void printAllParameters(cJSON *jsonObj, char *str)
  */
 char **GetSubstrings(const char *input)
 {
+    if (!input)
+        return NULL;
     char *str = strdup(input); // 创建输入字符串的副本
     if (str == NULL)
     {
