@@ -12,9 +12,9 @@
 // 对parameter的权限
 #define READONLY 0
 #define WRITABLE 1
-#define Notification_Off 0
-#define Passive_Notification 1
-#define Active_Notification 2
+#define Notification_Off 0 //通知关闭
+#define Passive_Notification 1 //被动通知，值变化时，新值包括在下次向ACS建立会话时发送Inform消息的ParameterList中。
+#define Active_Notification 2 //主动通知。值每发生变化，CPE必须启动到ACS的会话，并在相关的Inform消息的ParameterList中包括新值。
 
 // 对Object的权限
 #define PresentObject 0 //必须存在
@@ -29,6 +29,16 @@ typedef struct
     // char *value;// 值
     unsigned char writable;// 1 表示可写， 0 表示只读(已有宏定义)，若为只读则不需要保存到JSON文件
     unsigned char notification;// 0 表示通知关闭， 1 表示被动通知， 2 表示主动通知(已有宏定义)
+    /**
+     * 为其授予对指定参数的写访问权限的零个或多个实体的数组
+     * 即有哪些方式可以修改参数的值，如ACS，Lan侧接口
+     * 目前，只定义了一种类型的实体，可以包括在此列表中：
+     *  “Subscriber”，表示通过用户LAN上控制的接口进行写访问。
+     * 目前，没有指定其他WAN端配置协议的访问限制。
+     * 默认情况下，在ACS对访问列表进行任何更改之前，应向上面指定的所有实体授予访问权限。
+     * TR-069 ACS总是具有对所有可写参数的写访问权，而不管是否在访问列表上。
+    */
+    char **AccessList;
     /*
         值类型包括：string、int、unsignedInt、boolean、dateTime、base64、anySimpleType
     */
@@ -68,7 +78,7 @@ struct Object
 typedef struct 
 {
     char *name; // 可为部分路径或完整路径
-    bool writable; // 若为部分路径即Object，则表示是否可使用addObject添加实例，即该路径的下一Object是否为占位符
+    unsigned char writable; // 若为部分路径即Object，则表示是否可使用addObject添加实例，即该路径的下一Object是否为占位符
 } ParameterInfoStruct;
 
 
@@ -80,13 +90,14 @@ void set_parameter_struct(Parameter *param, char *name, unsigned char writable, 
 
 // 具体操作对应的函数
 void getAllParameters();
-void getParameter(char *path, char** str);
-void getParameterName(char *path, char *NextLevel, ParameterInfoStruct ***parameterList);
-void setParameter(char *path, char *value);
-void addObject(char *path);
+void setParameter(const char *path, const char *value);
+void getParameter(const char *path, char** str);
+void getParameterName(const char *path, const char *NextLevel, ParameterInfoStruct ***parameterList);
+void SetParameterAttributes(const char *path, const bool NotificationChange, const int Notification, const bool AccessListChange, char **AccessList);
+void addObject(const char *path);
 
 // 数据模型相关的函数
-int addObjectToDataModel(char *path, unsigned char writable,unsigned char limit, void (*function)());
+int addObjectToDataModel(char *path, const unsigned char writable, const unsigned char limit, void (*function)());
 struct Object *createObjectToDataModel(struct Object *obj, const int index);
 struct Object *findChildObject(struct Object *obj, const char *str);
 int addParameterToDataModel(char *path, unsigned char writable, unsigned char notification, char *valueType, void (*function)());
@@ -95,23 +106,25 @@ void iterateDataModel(struct Object *obj, char *str);
 int checkObjectPath();
 int checkParameterPath();
 int addObjectToData();
+unsigned char getWritable(const char *path);
 
 
 // 操作JSON数据文件的函数
 bool init_root();
 bool save_data();
 cJSON* createObjectPathToJsonData();
-void createParameterPathToJsonData();
+void createParameterPathToJsonData(Parameter *param);
+void SetParameterAttributesToJsonData(cJSON *node, Parameter *param, const char* value);
 void createObjectToJsonData(struct Object *placeholder);
 void ObjectInstanceAttributeSupplementation(cJSON *node, struct Object *obj);
 int GetPlaceholderMaxNum(cJSON *node);
 cJSON* getParameterJSON();
-ParameterInfoStruct** getChildFromJson(char *path);
+ParameterInfoStruct** getChildFromJson(const char *path);
 void getDescendantsFromJson(const char *path, cJSON *object, ParameterInfoStruct ***List, int *const index);
 void printAllParameters(cJSON *jsonObj, char *str);
 
 // 类型转换或判断等相关的函数
-char **GetSubstrings(const char *input);
+char **getSubStrings(const char *input, int *count);
 char *concatenateStrings(const char *str1, const char *str2);
 bool isNumeric(const char *str);
 

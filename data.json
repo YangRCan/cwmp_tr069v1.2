@@ -1,38 +1,134 @@
 {
 	"DeviceInfo":	{
 		"MemoryStatus":	{
-			"Total":	"",
-			"Free":	""
+			"Total":	{
+				"value":	"",
+				"writable":	"0",
+				"AccessList":	["Subscriber"]
+			},
+			"Free":	{
+				"value":	"",
+				"writable":	"0",
+				"AccessList":	["Subscriber"]
+			}
 		},
-		"SpecVersion":	"1.0",
-		"ProvisioningCode":	"",
-		"Manufacturer":	"",
-		"ManufacturerOUI":	"",
-		"ProductClass":	"",
-		"SerialNumber":	"",
-		"HardwareVersion":	"",
-		"SoftwareVersion":	"",
-		"IP":	"",
-		"UpTime":	"",
-		"DeviceLog":	""
+		"SpecVersion":	{
+			"value":	"",
+			"writable":	"0",
+			"AccessList":	["Subscriber"]
+		},
+		"ProvisioningCode":	{
+			"value":	"",
+			"writable":	"0",
+			"AccessList":	["Subscriber"]
+		},
+		"Manufacturer":	{
+			"value":	"",
+			"writable":	"0",
+			"AccessList":	["Subscriber"]
+		},
+		"ManufacturerOUI":	{
+			"value":	"",
+			"writable":	"0",
+			"AccessList":	["Subscriber"]
+		},
+		"ProductClass":	{
+			"value":	"",
+			"writable":	"0",
+			"AccessList":	["Subscriber"]
+		},
+		"SerialNumber":	{
+			"value":	"",
+			"writable":	"0",
+			"AccessList":	["Subscriber"]
+		},
+		"HardwareVersion":	{
+			"value":	"",
+			"writable":	"0",
+			"AccessList":	["Subscriber"]
+		},
+		"SoftwareVersion":	{
+			"value":	"",
+			"writable":	"0",
+			"AccessList":	["Subscriber"]
+		},
+		"IP":	{
+			"value":	"",
+			"writable":	"0",
+			"AccessList":	["Subscriber"]
+		},
+		"UpTime":	{
+			"value":	"",
+			"writable":	"0",
+			"AccessList":	["Subscriber"]
+		},
+		"DeviceLog":	{
+			"value":	"",
+			"writable":	"0",
+			"AccessList":	["Subscriber"]
+		}
 	},
 	"ManagementServer":	{
-		"URL":	"192.168.1.1",
-		"Username":	"",
-		"Password":	"",
-		"PeriodicInformEnable":	"",
-		"PeriodicInformInterval":	"",
-		"PeriodicInformTime":	"",
-		"ConnectionRequestURL":	"",
-		"ConnectionRequestUsername":	"",
-		"ConnectionRequestPassword":	"",
-		"ParameterKey":	""
+		"URL":	{
+			"value":	"",
+			"writable":	"1",
+			"AccessList":	["Subscriber"]
+		},
+		"Username":	{
+			"value":	"",
+			"writable":	"1",
+			"AccessList":	["Subscriber"]
+		},
+		"Password":	{
+			"value":	"",
+			"writable":	"1",
+			"AccessList":	["Subscriber"]
+		},
+		"PeriodicInformEnable":	{
+			"value":	"",
+			"writable":	"1",
+			"AccessList":	["Subscriber"]
+		},
+		"PeriodicInformInterval":	{
+			"value":	"",
+			"writable":	"1",
+			"AccessList":	["Subscriber"]
+		},
+		"PeriodicInformTime":	{
+			"value":	"",
+			"writable":	"1",
+			"AccessList":	["Subscriber"]
+		},
+		"ConnectionRequestURL":	{
+			"value":	"",
+			"writable":	"0",
+			"AccessList":	["Subscriber"]
+		},
+		"ConnectionRequestUsername":	{
+			"value":	"",
+			"writable":	"1",
+			"AccessList":	["Subscriber"]
+		},
+		"ConnectionRequestPassword":	{
+			"value":	"",
+			"writable":	"1",
+			"AccessList":	["Subscriber"]
+		},
+		"ParameterKey":	{
+			"value":	"",
+			"writable":	"0",
+			"AccessList":	["Subscriber"]
+		}
 	},
 	"DHCPv4":	{
 		"Server":	{
 			"Pool":	{
 			},
-			"Enable":	""
+			"Enable":	{
+				"value":	"",
+				"writable":	"1",
+				"AccessList":	["Subscriber"]
+			}
 		}
 	},
 	"IP":	{
@@ -40,16 +136,56 @@
 		},
 		"Diagnostics":	{
 			"IPPing":	{
-				"DiagnosticsState":	"",
-				"Host":	"",
-				"NumberOfRepetitions":	"",
-				"Timeout":	"",
-				"DataBlockSize":	"",
-				"SuccessCount":	"",
-				"FailureCount":	"",
-				"AverageResponseTime":	"",
-				"MinimumResponseTime":	"",
-				"MaximumResponseTime":	""
+				"DiagnosticsState":	{
+					"value":	"",
+					"writable":	"1",
+					"AccessList":	["Subscriber"]
+				},
+				"Host":	{
+					"value":	"",
+					"writable":	"1",
+					"AccessList":	["Subscriber"]
+				},
+				"NumberOfRepetitions":	{
+					"value":	"",
+					"writable":	"1",
+					"AccessList":	["Subscriber"]
+				},
+				"Timeout":	{
+					"value":	"",
+					"writable":	"1",
+					"AccessList":	["Subscriber"]
+				},
+				"DataBlockSize":	{
+					"value":	"",
+					"writable":	"1",
+					"AccessList":	["Subscriber"]
+				},
+				"SuccessCount":	{
+					"value":	"",
+					"writable":	"0",
+					"AccessList":	["Subscriber"]
+				},
+				"FailureCount":	{
+					"value":	"",
+					"writable":	"0",
+					"AccessList":	["Subscriber"]
+				},
+				"AverageResponseTime":	{
+					"value":	"",
+					"writable":	"0",
+					"AccessList":	["Subscriber"]
+				},
+				"MinimumResponseTime":	{
+					"value":	"",
+					"writable":	"0",
+					"AccessList":	["Subscriber"]
+				},
+				"MaximumResponseTime":	{
+					"value":	"",
+					"writable":	"0",
+					"AccessList":	["Subscriber"]
+				}
 			}
 		}
 	},

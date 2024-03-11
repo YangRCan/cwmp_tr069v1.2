@@ -65,6 +65,13 @@ void init_parameter_struct(Parameter *param)
     param->name = NULL;
     param->writable = READONLY;
     param->notification = Notification_Off;
+
+    //默认支持LAN侧修改
+    char *Access = (char *)malloc(strlen("Subscriber") + 1);
+    strcpy(Access, "Subscriber");
+    param->AccessList = (char **)malloc(sizeof(char **));
+    *(param->AccessList) = Access;
+
     param->valueType = NULL;
     param->function = NULL;
 }
@@ -97,10 +104,10 @@ void getAllParameters()
 }
 
 /**
- * 获取某属性名对应的配置的值，
- * 参数 name 指的是某对应参数的完整路径
+ * 修改某属性名对应的配置的值
+ * （注：前提这个属性允许被修改）
  */
-void getParameter(char *path, char **str)
+void setParameter(const char *path, const char *value)
 {
     int length = strlen(path);
     if (path[length - 1] == '.')
@@ -108,7 +115,47 @@ void getParameter(char *path, char **str)
         printErrorInfo(FAULT_9003);
         return;
     }
-    PATH = GetSubstrings(path);
+    PATH = getSubStrings(path, &count);
+    if (strcmp(dataModel->name, PATH[0]) != 0)
+    {
+        printErrorInfo(FAULT_9003);
+        return;
+    }
+
+    int faultCode = checkParameterPath();
+    if (faultCode > 0)
+    {
+        printErrorInfo(faultCode);
+        return;
+    }
+    else if (faultCode < 0)
+    {
+        printErrorInfo(FAULT_9008);
+        return;
+    }
+
+    cJSON *node = getParameterJSON();
+    if (node)
+    {
+        cJSON_SetValuestring(node, value);
+        save_data();
+        printf("Successfully modified");
+    }
+}
+
+/**
+ * 获取某属性名对应的配置的值，
+ * 参数 name 指的是某对应参数的完整路径
+ */
+void getParameter(const char *path, char **str)
+{
+    int length = strlen(path);
+    if (path[length - 1] == '.')
+    {
+        printErrorInfo(FAULT_9003);
+        return;
+    }
+    PATH = getSubStrings(path, &count);
     if (strcmp(dataModel->name, PATH[0]) != 0)
     {
         printErrorInfo(FAULT_9003);
@@ -133,7 +180,7 @@ void getParameter(char *path, char **str)
  * NextLevel 的值只能是 0 或 1。0 表示列出该对象参数及其所有子对象或参数。
  * 1 表示列出路径中包含的所有参数。 如果路径为空且NextLevel为1，则仅列出ROOT
  */
-void getParameterName(char *path, char *NextLevel, ParameterInfoStruct ***parameterList)
+void getParameterName(const char *path, const char *NextLevel, ParameterInfoStruct ***parameterList)
 {
     int nextLevel;
     if (isNumeric(NextLevel))
@@ -171,10 +218,10 @@ void getParameterName(char *path, char *NextLevel, ParameterInfoStruct ***parame
     // else
     //     pathType = 1;
 
-    PATH = GetSubstrings(path);
+    PATH = getSubStrings(path, &count);
     if (!path)
     {
-        PATH = GetSubstrings("Device.");
+        PATH = getSubStrings("Device.", &count);
         path = "Device.";
     }
 
@@ -207,56 +254,17 @@ void getParameterName(char *path, char *NextLevel, ParameterInfoStruct ***parame
 }
 
 /**
- * 修改某属性名对应的配置的值
- * （注：前提这个属性允许被修改）
+ * 修改与一个或多个CPE参数相关联的属性
  */
-void setParameter(char *path, char *value)
+void SetParameterAttributes(const char *path, const bool NotificationChange, const int Notification, const bool AccessListChange, char **AccessList)
 {
-    int length = strlen(path);
-    if (path[length - 1] == '.')
-    {
-        printErrorInfo(FAULT_9003);
-        return;
-    }
-    PATH = GetSubstrings(path);
-    if (strcmp(dataModel->name, PATH[0]) != 0)
-    {
-        printErrorInfo(FAULT_9003);
-        return;
-    }
-
-    int faultCode = checkParameterPath();
-    if (faultCode > 0)
-    {
-        printErrorInfo(faultCode);
-        return;
-    }
-    else if (faultCode < 0)
-    {
-        printErrorInfo(FAULT_9008);
-        return;
-    }
-
-    cJSON *node = getParameterJSON();
-    if (node)
-    {
-        cJSON_SetValuestring(node, value);
-        save_data();
-        printf("Successfully modified");
-    }
 }
-
-/**#################################
-##                                ##
-##      DataModel相关的函数        ##
-##                                ##
-#################################**/
 
 /**
  * 添加Object实例
  * 需要检查该Object是否为可创建，即数据模型中该路径后为{i}占位符, 且支持PresentObject、CreateObject或AddObject权限
  */
-void addObject(char *path)
+void addObject(const char *path)
 {
     int length = strlen(path);
     if (path[length - 1] != '.')
@@ -264,7 +272,7 @@ void addObject(char *path)
         printErrorInfo(FAULT_9003);
         return;
     }
-    PATH = GetSubstrings(path);
+    PATH = getSubStrings(path, &count);
     if (strcmp(dataModel->name, PATH[0]) != 0)
     {
         printErrorInfo(FAULT_9003);
@@ -276,11 +284,17 @@ void addObject(char *path)
     FreePATH();
 }
 
+/**#################################
+##                                ##
+##      DataModel相关的函数        ##
+##                                ##
+#################################**/
+
 /**
  * 为data model树添加一条新obj路径
  * 返回该新路径的最后一个Object对象
  */
-int addObjectToDataModel(char *path, unsigned char writable,unsigned char limit, void (*function)())
+int addObjectToDataModel(char *path, const unsigned char writable, const unsigned char limit, void (*function)())
 {
     int length = strlen(path);
     if (path[length - 1] != '.')
@@ -288,7 +302,7 @@ int addObjectToDataModel(char *path, unsigned char writable,unsigned char limit,
         printErrorInfo(FAULT_9003);
         return FAULT_9003;
     }
-    PATH = GetSubstrings(path);
+    PATH = getSubStrings(path, &count);
     if (strcmp(dataModel->name, PATH[0]) != 0)
     {
         printErrorInfo(FAULT_9003);
@@ -363,7 +377,7 @@ int addParameterToDataModel(char *path, unsigned char writable, unsigned char no
         printErrorInfo(FAULT_9003);
         return FAULT_9003;
     }
-    PATH = GetSubstrings(path);
+    PATH = getSubStrings(path, &count);
     if (strcmp(dataModel->name, PATH[0]) != 0)
     {
         printErrorInfo(FAULT_9003);
@@ -375,9 +389,10 @@ int addParameterToDataModel(char *path, unsigned char writable, unsigned char no
 
     obj->NumOfParameter++;
     obj->child_parameter = (Parameter *)realloc(obj->child_parameter, obj->NumOfParameter * sizeof(Parameter));
+    init_parameter_struct(&(obj->child_parameter[obj->NumOfParameter - 1]));//初始化参数
     set_parameter_struct(&(obj->child_parameter[obj->NumOfParameter - 1]), PATH[count], writable, notification, valueType, function);
 
-    createParameterPathToJsonData(); // 把参数Path添加到json文件中
+    createParameterPathToJsonData(&(obj->child_parameter[obj->NumOfParameter - 1])); // 把参数Path添加到json文件中
 
     count++; // 恢复，为了正常释放PATH内存
 
@@ -532,6 +547,56 @@ int addObjectToData()
     createObjectToJsonData(obj);
 }
 
+/**
+ * 获取object或者parameter的writable属性返回
+ */
+unsigned char getWritable(const char *path)
+{
+    int pathLength = strlen(path);
+    bool isObject = false;
+    int count = 0, index = 1;
+    if (path[pathLength - 1] == '.')
+        isObject = true;
+
+    char **pathList = getSubStrings(path, &count);
+
+    if (!isObject)
+        count--;
+    struct Object *obj = dataModel;
+    while (index < count)
+    {
+        if (isNumeric(PATH[index]))
+            obj = findChildObject(obj, "{i}");
+        else
+            obj = findChildObject(obj, pathList[index]);
+        index++;
+    }
+
+    if (index < count)
+    {
+        printErrorInfo(FAULT_9003);
+        return 0;
+    }
+
+    if (isObject)
+    {
+        return obj->writable;
+    }
+    else
+    {
+        Parameter *param = NULL;
+        for (size_t i = 0; i < obj->NumOfParameter; i++)
+        {
+            if (strcmp(obj->child_parameter[i].name, pathList[index]) == 0)
+                param = &(obj->child_parameter[i]);
+        }
+        if (param)
+            return param->writable;
+        else
+            printErrorInfo(FAULT_9003);
+    }
+}
+
 /**#################################
 ##                                ##
 ##     操作JSON文件相关的函数       ##
@@ -628,15 +693,49 @@ cJSON *createObjectPathToJsonData()
 /**
  * 把参数Path路径添加到Json文件中，如果其中已存在则不会创建
  */
-void createParameterPathToJsonData()
+void createParameterPathToJsonData(Parameter *param)
 {
     cJSON *node = createObjectPathToJsonData();
     if (!node)
         return;
     if (!cJSON_GetObjectItemCaseSensitive(node, PATH[count]))
     {
-        cJSON_AddStringToObject(node, PATH[count], "");
+        cJSON *target = cJSON_CreateObject();
+        cJSON_AddItemToObject(node, PATH[count], target);
+        // cJSON_AddStringToObject(node, PATH[count], "");
+        SetParameterAttributesToJsonData(target, param, "");
         save_data();
+    }
+}
+
+/**
+ * 为cJSON中的参数设置属性value、writable、AccessList
+*/
+void SetParameterAttributesToJsonData(cJSON *node, Parameter *param, const char* value) {
+    cJSON *target = cJSON_GetObjectItem(node, "value");
+    if(target) {
+        free(target->valuestring);
+        target->valuestring = strdup(value);
+    } else cJSON_AddItemToObject(node, "value", cJSON_CreateString(value));
+
+    target = cJSON_GetObjectItem(node, "writable");
+    char writable[2];
+    sprintf(writable, "%d", param->writable);
+    if(target) {
+        free(target->valuestring);
+        target->valuestring = strdup(writable);
+    } else cJSON_AddItemToObject(node, "writable", cJSON_CreateString(writable));
+
+    target = cJSON_GetObjectItem(node, "AccessList");
+    if(target) {
+        cJSON_DeleteItemFromObject(node, "AccessList");  // 删除原有的AccessList属性
+        // 创建新的AccessList属性并赋值
+        cJSON *newAccessListNode = cJSON_CreateStringArray((const char * const *)param->AccessList, 1);
+        cJSON_AddItemToObject(node, "AccessList", newAccessListNode);
+    } else {
+        // 创建新的AccessList属性并赋值
+        cJSON *newAccessListNode = cJSON_CreateStringArray((const char * const *)param->AccessList, 1);
+        cJSON_AddItemToObject(node, "AccessList", newAccessListNode);
     }
 }
 
@@ -751,7 +850,7 @@ cJSON *getParameterJSON()
 /**
  * 从Json中获取路径的子属性（包括对象类型）
  */
-ParameterInfoStruct **getChildFromJson(char *path)
+ParameterInfoStruct **getChildFromJson(const char *path)
 {
     cJSON *node = rootJSON;
     int index = 1;
@@ -782,7 +881,7 @@ ParameterInfoStruct **getChildFromJson(char *path)
 
             ParameterInfoStruct *info = (ParameterInfoStruct *)malloc(sizeof(ParameterInfoStruct));
             info->name = str;
-            info->writable = false;
+            info->writable = getWritable(str);
 
             List = (ParameterInfoStruct **)realloc(List, (index + 1) * sizeof(ParameterInfoStruct *));
             List[index - 1] = info;
@@ -827,7 +926,7 @@ void getDescendantsFromJson(const char *path, cJSON *object, ParameterInfoStruct
         }
         ParameterInfoStruct *objectInfo = (ParameterInfoStruct *)malloc(sizeof(ParameterInfoStruct));
         objectInfo->name = name;
-        objectInfo->writable = false;
+        objectInfo->writable = getWritable(name);
         (*index)++;
         *List = (ParameterInfoStruct **)realloc(*List, (*index) * sizeof(ParameterInfoStruct *));
         (*List)[*index - 1] = objectInfo;
@@ -841,7 +940,7 @@ void getDescendantsFromJson(const char *path, cJSON *object, ParameterInfoStruct
         strcat(name, object->string);
         ParameterInfoStruct *parameterInfo = (ParameterInfoStruct *)malloc(sizeof(ParameterInfoStruct));
         parameterInfo->name = name;
-        parameterInfo->writable = false;
+        parameterInfo->writable = getWritable(name);
         (*index)++;
         *List = (ParameterInfoStruct **)realloc(*List, (*index) * sizeof(ParameterInfoStruct *));
         (*List)[*index - 1] = parameterInfo;
@@ -906,7 +1005,7 @@ void printAllParameters(cJSON *jsonObj, char *str)
  * 从字符串中提取出关键字，如“local.url.port”，提取出local，url，port,并且按原顺序排列
  * 返回二位字符数组
  */
-char **GetSubstrings(const char *input)
+char **getSubStrings(const char *input, int *count)
 {
     if (!input)
         return NULL;
@@ -919,26 +1018,26 @@ char **GetSubstrings(const char *input)
 
     char **substrings = NULL;
     char *token = strtok(str, delimiter);
-    count = 0;
+    *count = 0;
 
     while (token != NULL)
     {
         // 重新分配内存，它可以调整之前分配的内存块的大小
-        substrings = realloc(substrings, (count + 1) * sizeof(char *));
+        substrings = realloc(substrings, (*count + 1) * sizeof(char *));
         if (substrings == NULL)
         {
             perror("Memory allocation failed");
             exit(EXIT_FAILURE);
         }
 
-        substrings[count] = strdup(token);
-        if (substrings[count] == NULL)
+        substrings[*count] = strdup(token);
+        if (substrings[*count] == NULL)
         {
             perror("Memory allocation failed");
             exit(EXIT_FAILURE);
         }
 
-        (count)++;
+        (*count)++;
         token = strtok(NULL, delimiter);
     }
 
