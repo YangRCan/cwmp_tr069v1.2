@@ -45,13 +45,13 @@ if(LibXml2_FOUND)
     message(STATUS "LibXml2 found")
 endif()
 
-find_package(cJSON CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE cjson)
+# find_package(cJSON CONFIG REQUIRED)
+# target_link_libraries(${PROJECT_NAME} PRIVATE cjson)
 
 # 操作参数的程序
-add_executable(cwmpdata ${DATA_SRC} ${CMAKE_CURRENT_SOURCE_DIR}/src/faultCode.c)
-find_package(cJSON CONFIG REQUIRED)
-target_link_libraries(cwmpdata PRIVATE cjson)
+add_executable(cwmpdata ${DATA_SRC} ${CMAKE_CURRENT_SOURCE_DIR}/src/faultCode.c ${CMAKE_CURRENT_SOURCE_DIR}/src/cJSON.c)
+# find_package(cJSON CONFIG REQUIRED)
+# target_link_libraries(cwmpdata PRIVATE cjson)
 
 
 # cmake -G "MinGW Makefiles" .. -DCMAKE_TOOLCHAIN_FILE=D:/development_environment/vcpkg/scripts/buildsystems/vcpkg.cmake

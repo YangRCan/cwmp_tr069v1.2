@@ -66,7 +66,7 @@ void init_parameter_struct(Parameter *param)
     param->writable = READONLY;
     param->notification = Notification_Off;
 
-    //默认支持LAN侧修改
+    // 默认支持LAN侧修改
     char *Access = (char *)malloc(strlen("Subscriber") + 1);
     strcpy(Access, "Subscriber");
     param->AccessList = (char **)malloc(sizeof(char **));
@@ -119,6 +119,7 @@ void setParameter(const char *path, const char *value)
     if (strcmp(dataModel->name, PATH[0]) != 0)
     {
         printErrorInfo(FAULT_9003);
+        freePath(PATH);
         return;
     }
 
@@ -126,21 +127,24 @@ void setParameter(const char *path, const char *value)
     if (faultCode > 0)
     {
         printErrorInfo(faultCode);
+        freePath(PATH);
         return;
     }
     else if (faultCode < 0)
     {
         printErrorInfo(FAULT_9008);
+        freePath(PATH);
         return;
     }
 
     cJSON *node = getParameterJSON();
     if (node)
     {
-        cJSON_SetValuestring(node, value);
+        cJSON_SetValuestring(cJSON_GetObjectItemCaseSensitive(node, "value"), value);
         save_data();
         printf("Successfully modified");
     }
+    freePath(PATH);
 }
 
 /**
@@ -159,6 +163,7 @@ void getParameter(const char *path, char **str)
     if (strcmp(dataModel->name, PATH[0]) != 0)
     {
         printErrorInfo(FAULT_9003);
+        freePath(PATH);
         return;
     }
 
@@ -166,14 +171,17 @@ void getParameter(const char *path, char **str)
     if (faultCode > 0)
     {
         printErrorInfo(faultCode);
+        freePath(PATH);
         return;
     }
 
     cJSON *node = getParameterJSON();
     if (node)
     {
+        node = cJSON_GetObjectItemCaseSensitive(node, "value");
         *str = node->valuestring;
     }
+    freePath(PATH);
 }
 
 /**
@@ -249,15 +257,109 @@ void getParameterName(const char *path, const char *NextLevel, ParameterInfoStru
             *parameterList = (ParameterInfoStruct **)malloc(1 * sizeof(ParameterInfoStruct *));
             int index = 0;
             getDescendantsFromJson(path, node, parameterList, &index);
+            // 添加结束符号NULL
+            ParameterInfoStruct *objectInfo = NULL;
+            *parameterList = (ParameterInfoStruct **)realloc(*parameterList, (index + 1) * sizeof(ParameterInfoStruct *));
+            (*parameterList)[index] = objectInfo;
         }
     }
+    freePath(PATH);
 }
 
 /**
  * 修改与一个或多个CPE参数相关联的属性
  */
-void SetParameterAttributes(const char *path, const bool NotificationChange, const int Notification, const bool AccessListChange, char **AccessList)
+int setParameterAttributes(ParameterAttributeStruct *parameterAttribute, const bool NotificationChange, const bool AccessListChange, const int numOfAccess)
 {
+    int length = strlen(parameterAttribute->Name);
+    char **pathList = getSubStrings(parameterAttribute->Name, &count);
+    if (strcmp(dataModel->name, pathList[0]) != 0)
+    {
+        printErrorInfo(FAULT_9005);
+        freePath(PATH);
+        return FAULT_9005;
+    }
+
+    cJSON *node = rootJSON;
+    int index = 1;
+    while (index < count)
+    {
+        node = cJSON_GetObjectItem(node, pathList[index]);
+        if (!node)
+            break;
+        index++;
+    }
+    freePath(pathList);
+
+    if (node)
+    {
+        if (cJSON_GetObjectItemCaseSensitive(node, "parameterType"))
+        {
+            if (NotificationChange)
+            {
+                cJSON *notification = cJSON_GetObjectItemCaseSensitive(node, "Notification");
+                char str[2];
+                sprintf(str, "%d", parameterAttribute->Notification);
+                notification->valuestring = strdup(str);
+            }
+
+            if (AccessListChange)
+            {
+                cJSON_DeleteItemFromObject(node, "AccessList");
+                cJSON *accessList = cJSON_CreateStringArray((const char *const *)parameterAttribute->AccessList, numOfAccess);
+                cJSON_AddItemToObject(node, "AccessList", accessList);
+            }
+
+            save_data();
+            return FAULT_0;
+        }
+        else
+        {
+            node = node->child;
+            while (node)
+            {
+                ParameterAttributeStruct param;
+                param.AccessList = parameterAttribute->AccessList;
+                param.Notification = parameterAttribute->Notification;
+                param.Name = malloc(strlen(parameterAttribute->Name) + strlen(node->string) + 2);
+                strcpy(param.Name, parameterAttribute->Name);
+                strcat(param.Name, node->string);
+                if (!cJSON_GetObjectItemCaseSensitive(node, "parameterType"))
+                    strcat(param.Name, ".");
+                setParameterAttributes(&param, NotificationChange, AccessListChange, numOfAccess);
+                free(param.Name);
+                node = node->next;
+            }
+        }
+    }
+    else
+    {
+        printErrorInfo(FAULT_9005);
+        return FAULT_9005;
+    }
+}
+
+/**
+ * 读取与一个或多个CPE参数相关联的属性。
+ * 设定NULL为ParameterAttributeStruct列表结尾
+ */
+ParameterAttributeStruct **getParameterAttributes(const char *const *ParameterNames, const int numOfParameter)
+{
+    ParameterAttributeStruct **result;
+    for (size_t i = 0; i < numOfParameter; i++)
+    {
+        int length = strlen(ParameterNames[i]);
+        char **pathList = getSubStrings(ParameterNames[i], &count);
+        if (strcmp(dataModel->name, pathList[0]) != 0)
+        {
+            printErrorInfo(FAULT_9005);
+            freePath(pathList);
+            return NULL;
+        }
+        freePath(pathList);
+        ParameterAttributeStruct **row = getAttributesFromJson(ParameterNames[i]);
+        return row;
+    }
 }
 
 /**
@@ -281,7 +383,7 @@ void addObject(const char *path)
 
     addObjectToData();
 
-    FreePATH();
+    freePath(PATH);
 }
 
 /**#################################
@@ -320,7 +422,7 @@ int addObjectToDataModel(char *path, const unsigned char writable, const unsigne
 
     createObjectPathToJsonData(); // 并在数据文件中创建该路径
 
-    FreePATH();
+    freePath(PATH);
     free(path);
     return FAULT_0;
 }
@@ -389,14 +491,14 @@ int addParameterToDataModel(char *path, unsigned char writable, unsigned char no
 
     obj->NumOfParameter++;
     obj->child_parameter = (Parameter *)realloc(obj->child_parameter, obj->NumOfParameter * sizeof(Parameter));
-    init_parameter_struct(&(obj->child_parameter[obj->NumOfParameter - 1]));//初始化参数
+    init_parameter_struct(&(obj->child_parameter[obj->NumOfParameter - 1])); // 初始化参数
     set_parameter_struct(&(obj->child_parameter[obj->NumOfParameter - 1]), PATH[count], writable, notification, valueType, function);
 
     createParameterPathToJsonData(&(obj->child_parameter[obj->NumOfParameter - 1])); // 把参数Path添加到json文件中
 
     count++; // 恢复，为了正常释放PATH内存
 
-    FreePATH();
+    freePath(PATH);
     free(path);
     return FAULT_0;
 }
@@ -404,16 +506,16 @@ int addParameterToDataModel(char *path, unsigned char writable, unsigned char no
 /**
  * 释放全局变量PATH的空间
  */
-void FreePATH()
+void freePath(char **path)
 {
-    if (PATH)
+    if (path)
     {
         for (size_t i = 0; i < count; ++i)
         {
-            free(PATH[i]); // 释放每个子字符串
+            free(path[i]); // 释放每个子字符串
         }
-        free(PATH); // 释放存储指针的数组
-        PATH = NULL;
+        free(path); // 释放存储指针的数组
+        path = NULL;
     }
 }
 
@@ -565,7 +667,7 @@ unsigned char getWritable(const char *path)
     struct Object *obj = dataModel;
     while (index < count)
     {
-        if (isNumeric(PATH[index]))
+        if (isNumeric(pathList[index]))
             obj = findChildObject(obj, "{i}");
         else
             obj = findChildObject(obj, pathList[index]);
@@ -652,7 +754,7 @@ bool save_data()
     char *jsonString = cJSON_Print(rootJSON); // 转成字符串
     fprintf(file, "%s", jsonString);          // 写入
     fclose(file);                             // 关闭
-    // free(jsonString);//释放字符串空间
+    free(jsonString);                         // 释放字符串空间
 
     return true;
 }
@@ -710,31 +812,66 @@ void createParameterPathToJsonData(Parameter *param)
 
 /**
  * 为cJSON中的参数设置属性value、writable、AccessList
-*/
-void SetParameterAttributesToJsonData(cJSON *node, Parameter *param, const char* value) {
-    cJSON *target = cJSON_GetObjectItem(node, "value");
-    if(target) {
+ */
+void SetParameterAttributesToJsonData(cJSON *node, Parameter *param, const char *value)
+{
+    // parameterType
+    cJSON *target = cJSON_GetObjectItem(node, "parameterType");
+    if (target)
+    {
+        free(target->valuestring);
+        target->valuestring = strdup(param->valueType);
+    }
+    else
+        cJSON_AddItemToObject(node, "parameterType", cJSON_CreateString(param->valueType));
+
+    // value
+    target = cJSON_GetObjectItem(node, "value");
+    if (target)
+    {
         free(target->valuestring);
         target->valuestring = strdup(value);
-    } else cJSON_AddItemToObject(node, "value", cJSON_CreateString(value));
+    }
+    else
+        cJSON_AddItemToObject(node, "value", cJSON_CreateString(value));
 
+    // writable
     target = cJSON_GetObjectItem(node, "writable");
     char writable[2];
     sprintf(writable, "%d", param->writable);
-    if(target) {
+    if (target)
+    {
         free(target->valuestring);
         target->valuestring = strdup(writable);
-    } else cJSON_AddItemToObject(node, "writable", cJSON_CreateString(writable));
+    }
+    else
+        cJSON_AddItemToObject(node, "writable", cJSON_CreateString(writable));
 
+    // Notification
+    target = cJSON_GetObjectItem(node, "Notification");
+    char notification[2];
+    sprintf(notification, "%d", param->notification);
+    if (target)
+    {
+        free(target->valuestring);
+        target->valuestring = strdup(notification);
+    }
+    else
+        cJSON_AddItemToObject(node, "Notification", cJSON_CreateString(notification));
+
+    // AccessList
     target = cJSON_GetObjectItem(node, "AccessList");
-    if(target) {
-        cJSON_DeleteItemFromObject(node, "AccessList");  // 删除原有的AccessList属性
+    if (target)
+    {
+        cJSON_DeleteItemFromObject(node, "AccessList"); // 删除原有的AccessList属性
         // 创建新的AccessList属性并赋值
-        cJSON *newAccessListNode = cJSON_CreateStringArray((const char * const *)param->AccessList, 1);
+        cJSON *newAccessListNode = cJSON_CreateStringArray((const char *const *)param->AccessList, 1);
         cJSON_AddItemToObject(node, "AccessList", newAccessListNode);
-    } else {
+    }
+    else
+    {
         // 创建新的AccessList属性并赋值
-        cJSON *newAccessListNode = cJSON_CreateStringArray((const char * const *)param->AccessList, 1);
+        cJSON *newAccessListNode = cJSON_CreateStringArray((const char *const *)param->AccessList, 1);
         cJSON_AddItemToObject(node, "AccessList", newAccessListNode);
     }
 }
@@ -876,7 +1013,7 @@ ParameterInfoStruct **getChildFromJson(const char *path)
             char *str = (char *)malloc(pathLen + nodeLen + 2);
             strcpy(str, path);
             strcat(str, node->string);
-            if (node->type == cJSON_Object)
+            if (!cJSON_GetObjectItemCaseSensitive(node, "parameterType"))
                 strcat(str, ".");
 
             ParameterInfoStruct *info = (ParameterInfoStruct *)malloc(sizeof(ParameterInfoStruct));
@@ -911,15 +1048,15 @@ void getDescendantsFromJson(const char *path, cJSON *object, ParameterInfoStruct
 
     char *name;
     int pathLength = strlen(path);
-    if (object->type == cJSON_Object)
+    if (!cJSON_GetObjectItemCaseSensitive(object, "parameterType"))
     {
-        // printf("Object: %s\n", object->string);
+
         int Length = pathLength + 2;
         if (object->string)
             Length += strlen(object->string);
         name = (char *)malloc(Length);
         strcpy(name, path);
-        if (object->string)
+        if (object->string && !strstr(path, object->string))
         {
             strcat(name, object->string);
             strcat(name, ".");
@@ -930,6 +1067,13 @@ void getDescendantsFromJson(const char *path, cJSON *object, ParameterInfoStruct
         (*index)++;
         *List = (ParameterInfoStruct **)realloc(*List, (*index) * sizeof(ParameterInfoStruct *));
         (*List)[*index - 1] = objectInfo;
+
+        cJSON *child = object->child;
+        while (child != NULL)
+        {
+            getDescendantsFromJson(name, child, List, index);
+            child = child->next;
+        }
     }
     else
     {
@@ -945,13 +1089,63 @@ void getDescendantsFromJson(const char *path, cJSON *object, ParameterInfoStruct
         *List = (ParameterInfoStruct **)realloc(*List, (*index) * sizeof(ParameterInfoStruct *));
         (*List)[*index - 1] = parameterInfo;
     }
+}
 
-    cJSON *child = object->child;
-    while (child != NULL)
+/**
+ * 从JSON文件中获取参数的属性，返回ParameterAttributeStruct指针数组
+ * 参数parameter可以是完整路径，也可以是部分路径，部分路径则返回包含该部分路径的所有参数属性
+ * 返回值：ParameterAttributeStruct指针数组
+ */
+ParameterAttributeStruct **getAttributesFromJson(const char *parameter)
+{
+    int length = strlen(parameter), count = 0, index = 1;
+    char **pathList = getSubStrings(parameter, &count);
+
+    cJSON *node = rootJSON;
+    while (index < count)
     {
-        getDescendantsFromJson(name, child, List, index);
-        child = child->next;
+        node = cJSON_GetObjectItemCaseSensitive(node, pathList[index]);
+        if (!node)
+            break;
+        index++;
     }
+
+    if (!node)
+    {
+        printErrorInfo(FAULT_9005);
+        return NULL;
+    }
+
+    if (cJSON_GetObjectItemCaseSensitive(node, "parameterType"))
+    {
+        // 是参数，直接封装返回
+        ParameterAttributeStruct **paramAttributes = (ParameterAttributeStruct **)calloc(2, sizeof(ParameterAttributeStruct *));
+        paramAttributes[0] = (ParameterAttributeStruct *)malloc(sizeof(ParameterAttributeStruct));
+
+        paramAttributes[0]->Name = strdup(parameter);//记得释放
+
+        cJSON *accessList = cJSON_GetObjectItemCaseSensitive(node, "AccessList");
+        int arraySize = cJSON_GetArraySize(accessList);
+        paramAttributes[0]->AccessList = (char **)malloc(arraySize * sizeof(char *));
+        for (size_t i = 0; i < arraySize; i++)
+        {
+            cJSON *accessItem = cJSON_GetArrayItem(accessList, i);
+            const char *accessValue = cJSON_GetStringValue(accessItem);
+            paramAttributes[0]->AccessList[i] = strdup(accessValue);
+        }
+
+        paramAttributes[0]->Notification = atoi(cJSON_GetObjectItemCaseSensitive(node, "Notification")->valuestring);
+        paramAttributes[1] = NULL;//数组结束标志
+
+        return paramAttributes;
+    }
+    else
+    {
+        // 循环递归找参数
+
+    }
+
+    freePath(pathList);
 }
 
 /**
@@ -985,11 +1179,12 @@ void printAllParameters(cJSON *jsonObj, char *str)
     cJSON *child = jsonObj->child;
     while (child != NULL)
     {
-        if (child->type == cJSON_Object)
+        if (!cJSON_GetObjectItemCaseSensitive(child, "parameterType"))
             printAllParameters(child, destination);
         else
         {
-            printf("{ \" parameter \" : \" %s%s \"}, { \" value \" : \" %s \"}\n", destination, child->string, child->valuestring);
+            cJSON *value = cJSON_GetObjectItemCaseSensitive(child, "value");
+            printf("{ \" parameter \" : \" %s%s \"}, { \" value \" : \" %s \"}\n", destination, child->string, value->valuestring);
         }
         child = child->next;
     }

@@ -39,6 +39,28 @@ void init()
     // {
     //     printf("--%s--\n", result[i]);
     // }
+
+    // 测试setParameterAttributes
+    // char *str[] = {"测试1", "测试3"};
+    // ParameterAttributeStruct param;
+    // param.AccessList = str;
+    // param.Name = "Device.DeviceInfo.MemoryStatus.Total";
+    // param.Notification = 1;
+    // setParameterAttributes(&param, true, true, 2);
+
+    // 测试getParameterAttributes
+    char *str[] = {"Device.DeviceInfo.MemoryStatus.Total"};
+    ParameterAttributeStruct **param = getParameterAttributes((const char *const *)str, 1);
+    int index = 0;
+    while (param&&param[index])
+    {
+        printf("{ \" parameter \" : \" %s \"}, { \" Notification \" : \" %d \"}\n", param[index]->Name, param[index]->Notification);
+        printf("ACCESS: %s\n", param[index]->AccessList[0]);
+        free(param[index]->Name);
+        free(param[index]);
+        index++;
+    }
+    if(param) free(param);
 }
 
 /**
@@ -68,9 +90,12 @@ int main(int argc, char *argv[])
                 }
                 else if (strcmp(operate, "get") == 0 && strcmp(argv[2], "value") == 0)
                 {
-                    char **str;
-                    operates[i].function(argv[2], str);
-                    printf("{ \" parameter \" : \" %s \"}, { \" value \" : \" %s \"}\n", argv[2], *str);
+                    char **str = (char **)malloc(sizeof(char *));
+                    operates[i].function(argv[3], str);
+                    printf("{ \" parameter \" : \" %s \"}, { \" value \" : \" %s \"}\n", argv[3], *str);
+                    if (*str)
+                        free(*str);
+                    free(str);
                     break;
                 }
                 else if (strcmp(operate, "get") == 0 && strcmp(argv[2], "name") == 0 && argc >= 4)

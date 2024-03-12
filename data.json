@@ -2,121 +2,167 @@
 	"DeviceInfo":	{
 		"MemoryStatus":	{
 			"Total":	{
+				"parameterType":	"unsignedInt",
 				"value":	"",
 				"writable":	"0",
-				"AccessList":	["Subscriber"]
+				"Notification":	"1",
+				"AccessList":	["测试1", "测试3"]
 			},
 			"Free":	{
+				"parameterType":	"unsignedInt",
 				"value":	"",
 				"writable":	"0",
-				"AccessList":	["Subscriber"]
+				"Notification":	"2",
+				"AccessList":	["测试1", "测试2"]
 			}
 		},
 		"SpecVersion":	{
+			"parameterType":	"string",
 			"value":	"",
 			"writable":	"0",
+			"Notification":	"2",
 			"AccessList":	["Subscriber"]
 		},
 		"ProvisioningCode":	{
+			"parameterType":	"string",
 			"value":	"",
 			"writable":	"0",
+			"Notification":	"2",
 			"AccessList":	["Subscriber"]
 		},
 		"Manufacturer":	{
+			"parameterType":	"string(:64)",
 			"value":	"",
 			"writable":	"0",
+			"Notification":	"2",
 			"AccessList":	["Subscriber"]
 		},
 		"ManufacturerOUI":	{
+			"parameterType":	"string(6)",
 			"value":	"",
 			"writable":	"0",
+			"Notification":	"2",
 			"AccessList":	["Subscriber"]
 		},
 		"ProductClass":	{
+			"parameterType":	"string(:64)",
 			"value":	"",
 			"writable":	"0",
+			"Notification":	"2",
 			"AccessList":	["Subscriber"]
 		},
 		"SerialNumber":	{
+			"parameterType":	"string(:64)",
 			"value":	"",
 			"writable":	"0",
+			"Notification":	"2",
 			"AccessList":	["Subscriber"]
 		},
 		"HardwareVersion":	{
+			"parameterType":	"string(:64)",
 			"value":	"",
 			"writable":	"0",
+			"Notification":	"2",
 			"AccessList":	["Subscriber"]
 		},
 		"SoftwareVersion":	{
+			"parameterType":	"string(:64)",
 			"value":	"",
 			"writable":	"0",
+			"Notification":	"2",
 			"AccessList":	["Subscriber"]
 		},
 		"IP":	{
+			"parameterType":	"string",
 			"value":	"",
 			"writable":	"0",
+			"Notification":	"2",
 			"AccessList":	["Subscriber"]
 		},
 		"UpTime":	{
+			"parameterType":	"unsignedInt",
 			"value":	"",
 			"writable":	"0",
+			"Notification":	"0",
 			"AccessList":	["Subscriber"]
 		},
 		"DeviceLog":	{
+			"parameterType":	"string",
 			"value":	"",
 			"writable":	"0",
+			"Notification":	"0",
 			"AccessList":	["Subscriber"]
 		}
 	},
 	"ManagementServer":	{
 		"URL":	{
+			"parameterType":	"string(:256)",
 			"value":	"",
 			"writable":	"1",
+			"Notification":	"0",
 			"AccessList":	["Subscriber"]
 		},
 		"Username":	{
+			"parameterType":	"string(:256)",
 			"value":	"",
 			"writable":	"1",
+			"Notification":	"0",
 			"AccessList":	["Subscriber"]
 		},
 		"Password":	{
+			"parameterType":	"string(:256)",
 			"value":	"",
 			"writable":	"1",
+			"Notification":	"0",
 			"AccessList":	["Subscriber"]
 		},
 		"PeriodicInformEnable":	{
+			"parameterType":	"boolean",
 			"value":	"",
 			"writable":	"1",
+			"Notification":	"0",
 			"AccessList":	["Subscriber"]
 		},
 		"PeriodicInformInterval":	{
+			"parameterType":	"unsignedInt(1:)",
 			"value":	"",
 			"writable":	"1",
+			"Notification":	"0",
 			"AccessList":	["Subscriber"]
 		},
 		"PeriodicInformTime":	{
+			"parameterType":	"dateTime",
 			"value":	"",
 			"writable":	"1",
+			"Notification":	"0",
 			"AccessList":	["Subscriber"]
 		},
 		"ConnectionRequestURL":	{
+			"parameterType":	"string(:256)",
 			"value":	"",
 			"writable":	"0",
+			"Notification":	"0",
 			"AccessList":	["Subscriber"]
 		},
 		"ConnectionRequestUsername":	{
+			"parameterType":	"string(:256)",
 			"value":	"",
 			"writable":	"1",
+			"Notification":	"0",
 			"AccessList":	["Subscriber"]
 		},
 		"ConnectionRequestPassword":	{
+			"parameterType":	"string(:256)",
 			"value":	"",
 			"writable":	"1",
+			"Notification":	"0",
 			"AccessList":	["Subscriber"]
 		},
 		"ParameterKey":	{
+			"parameterType":	"string(:32)",
 			"value":	"",
 			"writable":	"0",
+			"Notification":	"2",
 			"AccessList":	["Subscriber"]
 		}
 	},
@@ -125,8 +171,10 @@
 			"Pool":	{
 			},
 			"Enable":	{
+				"parameterType":	"boolean",
 				"value":	"",
 				"writable":	"1",
+				"Notification":	"0",
 				"AccessList":	["Subscriber"]
 			}
 		}
@@ -137,53 +185,73 @@
 		"Diagnostics":	{
 			"IPPing":	{
 				"DiagnosticsState":	{
+					"parameterType":	"string",
 					"value":	"",
 					"writable":	"1",
+					"Notification":	"0",
 					"AccessList":	["Subscriber"]
 				},
 				"Host":	{
+					"parameterType":	"string(:256)",
 					"value":	"",
 					"writable":	"1",
+					"Notification":	"0",
 					"AccessList":	["Subscriber"]
 				},
 				"NumberOfRepetitions":	{
+					"parameterType":	"unsignedInt(1:)",
 					"value":	"",
 					"writable":	"1",
+					"Notification":	"0",
 					"AccessList":	["Subscriber"]
 				},
 				"Timeout":	{
+					"parameterType":	"unsignedInt(1:)",
 					"value":	"",
 					"writable":	"1",
+					"Notification":	"0",
 					"AccessList":	["Subscriber"]
 				},
 				"DataBlockSize":	{
+					"parameterType":	"unsignedInt(1:65535)",
 					"value":	"",
 					"writable":	"1",
+					"Notification":	"0",
 					"AccessList":	["Subscriber"]
 				},
 				"SuccessCount":	{
+					"parameterType":	"unsignedInt",
 					"value":	"",
 					"writable":	"0",
+					"Notification":	"0",
 					"AccessList":	["Subscriber"]
 				},
 				"FailureCount":	{
+					"parameterType":	"unsignedInt",
 					"value":	"",
 					"writable":	"0",
+					"Notification":	"0",
 					"AccessList":	["Subscriber"]
 				},
 				"AverageResponseTime":	{
+					"parameterType":	"unsignedInt",
 					"value":	"",
 					"writable":	"0",
+					"Notification":	"0",
 					"AccessList":	["Subscriber"]
 				},
 				"MinimumResponseTime":	{
+					"parameterType":	"unsignedInt",
 					"value":	"",
 					"writable":	"0",
+					"Notification":	"0",
 					"AccessList":	["Subscriber"]
 				},
 				"MaximumResponseTime":	{
+					"parameterType":	"unsignedInt",
 					"value":	"",
 					"writable":	"0",
+					"Notification":	"0",
 					"AccessList":	["Subscriber"]
 				}
 			}

@@ -5,7 +5,8 @@
 #define _CWMP_PARAMETER_
 
 #include<stdbool.h>
-#include<cjson/cJSON.h>
+// #include<cjson/cJSON.h>
+#include<cJSON.h>
 
 #define DATAFILE "../data.json"
 
@@ -81,6 +82,14 @@ typedef struct
     unsigned char writable; // 若为部分路径即Object，则表示是否可使用addObject添加实例，即该路径的下一Object是否为占位符
 } ParameterInfoStruct;
 
+// ParameterAttributeStruct结构定义
+typedef struct
+{
+    char *Name;
+    int Notification;
+    char **AccessList;
+} ParameterAttributeStruct;
+
 
 // 初始化对应的函数
 void init_dataModel();
@@ -93,7 +102,8 @@ void getAllParameters();
 void setParameter(const char *path, const char *value);
 void getParameter(const char *path, char** str);
 void getParameterName(const char *path, const char *NextLevel, ParameterInfoStruct ***parameterList);
-void SetParameterAttributes(const char *path, const bool NotificationChange, const int Notification, const bool AccessListChange, char **AccessList);
+int setParameterAttributes(ParameterAttributeStruct *parameterAttribute ,const bool NotificationChange, const bool AccessListChange, int numOfAccess);
+ParameterAttributeStruct **getParameterAttributes(const char *const *ParameterNames, const int numOfParameter);
 void addObject(const char *path);
 
 // 数据模型相关的函数
@@ -101,7 +111,7 @@ int addObjectToDataModel(char *path, const unsigned char writable, const unsigne
 struct Object *createObjectToDataModel(struct Object *obj, const int index);
 struct Object *findChildObject(struct Object *obj, const char *str);
 int addParameterToDataModel(char *path, unsigned char writable, unsigned char notification, char *valueType, void (*function)());
-void FreePATH();
+void freePath(char **path);
 void iterateDataModel(struct Object *obj, char *str);
 int checkObjectPath();
 int checkParameterPath();
@@ -121,6 +131,7 @@ int GetPlaceholderMaxNum(cJSON *node);
 cJSON* getParameterJSON();
 ParameterInfoStruct** getChildFromJson(const char *path);
 void getDescendantsFromJson(const char *path, cJSON *object, ParameterInfoStruct ***List, int *const index);
+ParameterAttributeStruct** getAttributesFromJson(const char *parameter);
 void printAllParameters(cJSON *jsonObj, char *str);
 
 // 类型转换或判断等相关的函数
