@@ -345,45 +345,102 @@ int setParameterAttributes(ParameterAttributeStruct *parameterAttribute, const b
  */
 ParameterAttributeStruct **getParameterAttributes(const char *const *ParameterNames, const int numOfParameter)
 {
-    ParameterAttributeStruct **result;
+    ParameterAttributeStruct **result = (ParameterAttributeStruct **)malloc(sizeof(ParameterAttributeStruct *));
+    result[0] = NULL;
+    int resultLength = 0;
     for (size_t i = 0; i < numOfParameter; i++)
     {
-        int length = strlen(ParameterNames[i]);
-        char **pathList = getSubStrings(ParameterNames[i], &count);
-        if (strcmp(dataModel->name, pathList[0]) != 0)
+        ParameterAttributeStruct **row;
+        if (ParameterNames && ParameterNames[i] && strcmp(ParameterNames[i], "") != 0)
         {
-            printErrorInfo(FAULT_9005);
+            int length = strlen(ParameterNames[i]);
+            char **pathList = getSubStrings(ParameterNames[i], &count);
+            if (strcmp(dataModel->name, pathList[0]) != 0)
+            {
+                printErrorInfo(FAULT_9005);
+                freePath(pathList);
+                return NULL;
+            }
             freePath(pathList);
-            return NULL;
+            row = getAttributesFromJson(ParameterNames[i]);
         }
-        freePath(pathList);
-        ParameterAttributeStruct **row = getAttributesFromJson(ParameterNames[i]);
-        return row;
+        else
+        {
+            row = getAttributesFromJson("Device.");
+        }
+        int len = 0;
+        while (row && row[len])
+            len++;
+        result = (ParameterAttributeStruct **)realloc(result, (resultLength + len + 1) * sizeof(ParameterAttributeStruct *));
+
+        for (size_t i = 0; i < len; i++)
+        {
+            result[resultLength + i] = row[i];
+        }
+        result[resultLength + len] = NULL;
+        free(row);
+        resultLength += len;
     }
+    return result;
 }
 
 /**
  * 添加Object实例
  * 需要检查该Object是否为可创建，即数据模型中该路径后为{i}占位符, 且支持PresentObject、CreateObject或AddObject权限
  */
-void addObject(const char *path)
+void addObject(const char *path, char **instanceNumber)
 {
     int length = strlen(path);
     if (path[length - 1] != '.')
     {
-        printErrorInfo(FAULT_9003);
+        printErrorInfo(FAULT_9005);
         return;
     }
     PATH = getSubStrings(path, &count);
     if (strcmp(dataModel->name, PATH[0]) != 0)
     {
-        printErrorInfo(FAULT_9003);
+        printErrorInfo(FAULT_9005);
+        return;
+    }
+    addObjectToData(instanceNumber);
+
+    freePath(PATH);
+}
+
+/**
+ * 删除Object实例
+ * 调用将对象实例的路径名（包括实例号）
+ * 先检查该path是否为可删除，即该路径是最后是否为占位符的实例编号，且该实例在JSON中必须存在
+ */
+void deleteObject(const char *path)
+{
+    int length = strlen(path);
+    if (path[length - 1] != '.')
+    {
+        printErrorInfo(FAULT_9005);
+        return;
+    }
+    PATH = getSubStrings(path, &count);
+    if (strcmp(dataModel->name, PATH[0]) != 0)
+    {
+        printErrorInfo(FAULT_9005);
         return;
     }
 
-    addObjectToData();
+    struct Object *obj = checkObjectPath();    // 如果最后一个是数字，也会返回object对象{i}
+    if (!obj && strcmp(obj->name, "{i}") != 0) // 路径不存在或者不是实例化对象
+        return;
 
-    freePath(PATH);
+    count--;
+    cJSON *node = getParameterJSON(); // 获取路径的最后一个JSON对象
+    count++;
+    cJSON *child = getParameterJSON();
+    if (!node || !child)
+        return; // 路径不正确或者实例不存在
+
+    cJSON_DeleteItemFromObject(node, child->string); // 内部调用了cJSON_Delete将移除的对象释放
+    // deleteObjectInJson(child);
+    save_data();
 }
 
 /**#################################
@@ -570,35 +627,40 @@ void iterateDataModel(struct Object *obj, char *str)
 }
 
 /**
- * 检测Object路径是否符合数据模型
+ * 检测Object路径是否符合数据模型, 并且返回该路径的最后一个Object对象
  */
-int checkObjectPath()
+struct Object *checkObjectPath()
 {
     struct Object *obj = dataModel;
     int index = 1;
-    while (obj && index < count)
+    while (index < count)
     {
         if (isNumeric(PATH[index]))
             obj = findChildObject(obj, "{i}");
         else
             obj = findChildObject(obj, PATH[index]);
+        if (!obj)
+            break;
         index++;
     }
 
     if (index < count)
     {
-        printErrorInfo(FAULT_9003);
-        return FAULT_9003;
+        printErrorInfo(FAULT_9005);
+        return NULL;
     }
-    return FAULT_0;
+    return obj;
 }
 
 /**
  * 检测Object是否可以实例化, 可以则返回其占位符{i}
+ * 即按路径在数据模型中进行检查
  */
 struct Object *ObjectCanInstantiate()
 {
-    struct Object *obj = createObjectToDataModel(dataModel, 1); // 获取最后一个Object
+    struct Object *obj = checkObjectPath(); // 检查路径是否正确并且获取该路径的最后一个Object对象
+    if (!obj)
+        return NULL;
     for (size_t i = 0; i < obj->NumOfObject; i++)
     {
         if (strcmp(obj->child_object[i].name, "{i}") == 0)
@@ -615,12 +677,12 @@ struct Object *ObjectCanInstantiate()
 int checkParameterPath()
 {
     count--;
-    int faultCode = checkObjectPath();
-    if (faultCode > 0)
-        return faultCode;
+    struct Object *obj = checkObjectPath(); // 正确则会返回路径的最后一个Object对象
+    if (!obj)
+        return FAULT_9005;
 
-    struct Object *obj = dataModel;
-    obj = createObjectToDataModel(obj, 1);
+    // obj = dataModel;
+    // obj = createObjectToDataModel *(obj, 1);
     count++;
     for (size_t i = 0; i < obj->NumOfParameter; i++)
     {
@@ -632,21 +694,24 @@ int checkParameterPath()
                 return -1; // 不可set修改值
         }
     }
-    return FAULT_9003;
+    printErrorInfo(FAULT_9005);
+    return FAULT_9005;
 }
 
 /**
  * 真正添加Object实例的函数
  */
-int addObjectToData()
+int addObjectToData(char **instanceNumber)
 {
-    int faultCode = checkObjectPath();
-    if (faultCode > 0)
-        return faultCode;
+    struct Object *obj = checkObjectPath();
+    if (!obj)
+        return FAULT_9005;
 
-    struct Object *obj = ObjectCanInstantiate();
-
-    createObjectToJsonData(obj);
+    obj = ObjectCanInstantiate(); // 可以实例化则会返回其下一级占位符{i}
+    if (!obj)
+        return FAULT_9005;
+    // 在JSON中创建该实例
+    *instanceNumber = createObjectToJsonData(obj);
 }
 
 /**
@@ -880,18 +945,23 @@ void SetParameterAttributesToJsonData(cJSON *node, Parameter *param, const char 
  * 向Json文件中创建新的Object实例
  * placeholder: dataModel中PATH对应的占位符object对象
  */
-void createObjectToJsonData(struct Object *placeholder)
+char *createObjectToJsonData(struct Object *placeholder)
 {
+    if (!placeholder)
+    {
+        printErrorInfo(FAULT_9005);
+        return NULL;
+    }
     cJSON *node = createObjectPathToJsonData(); // 获取要添加的Object的Json对象
-    cJSON *target = cJSON_CreateObject();       // 创建空JSON对象
     if (!node)
     {
         printErrorInfo(FAULT_9003);
-        return;
+        return NULL;
     }
+    cJSON *target = cJSON_CreateObject(); // 创建空JSON对象
 
     // 在JSON文件中获取最大实例号并加1
-    placeholder->nextPlaceholder = GetPlaceholderMaxNum(node) + 1;
+    placeholder->nextPlaceholder = GetPlaceholderMaxNum(node) + 1 > placeholder->nextPlaceholder ? GetPlaceholderMaxNum(node) + 1 : placeholder->nextPlaceholder;
 
     // 将占位符数字转为字符串
     int len = 0, num = placeholder->nextPlaceholder;
@@ -909,11 +979,15 @@ void createObjectToJsonData(struct Object *placeholder)
 
     // 给新创建的实例补充属性
     ObjectInstanceAttributeSupplementation(target, placeholder);
+
     save_data();
+
+    return str; // 返回实例号
 }
 
 /**
  * 给新创建的对象实例补充其应该有的属性(递归)
+ * 参数: node是在JSON文件中新创建的实例节点；obj是数据模型中的对应的节点
  */
 void ObjectInstanceAttributeSupplementation(cJSON *node, struct Object *obj)
 {
@@ -929,7 +1003,9 @@ void ObjectInstanceAttributeSupplementation(cJSON *node, struct Object *obj)
 
     for (size_t i = 0; i < obj->NumOfParameter; i++)
     {
-        cJSON_AddStringToObject(node, obj->child_parameter[i].name, "");
+        target = cJSON_CreateObject();
+        cJSON_AddItemToObject(node, obj->child_parameter[i].name, target);
+        SetParameterAttributesToJsonData(target, &(obj->child_parameter[i]), "");
     }
 }
 
@@ -963,7 +1039,24 @@ int GetPlaceholderMaxNum(cJSON *node)
 }
 
 /**
- * 获取Parameter在JSON文件中对应的cJSON对象
+ * 递归删除Json中某对象实例
+ */
+// int deleteObjectInJson(cJSON *node) {
+//     if(node == NULL) return FAULT_9005;
+//     printf("现在是%s\n", node->string);
+//     cJSON *child = node->child;
+
+//     while (child != NULL)
+//     {
+//         cJSON *next = child->next;//先存不然待会要被删掉了
+//         deleteObjectInJson(child);
+//         child = next;
+//     }
+//     cJSON_Delete(node);
+// }
+
+/**
+ * 获取 Parameter/路径 在JSON文件中对应的cJSON对象(最后一个cJOSN)
  */
 cJSON *getParameterJSON()
 {
@@ -979,7 +1072,7 @@ cJSON *getParameterJSON()
 
     if (index < count)
     {
-        printErrorInfo(FAULT_9003);
+        printErrorInfo(FAULT_9005);
     }
     return node;
 }
@@ -1122,27 +1215,53 @@ ParameterAttributeStruct **getAttributesFromJson(const char *parameter)
         ParameterAttributeStruct **paramAttributes = (ParameterAttributeStruct **)calloc(2, sizeof(ParameterAttributeStruct *));
         paramAttributes[0] = (ParameterAttributeStruct *)malloc(sizeof(ParameterAttributeStruct));
 
-        paramAttributes[0]->Name = strdup(parameter);//记得释放
+        paramAttributes[0]->Name = strdup(parameter); // 记得释放
 
         cJSON *accessList = cJSON_GetObjectItemCaseSensitive(node, "AccessList");
         int arraySize = cJSON_GetArraySize(accessList);
-        paramAttributes[0]->AccessList = (char **)malloc(arraySize * sizeof(char *));
+        paramAttributes[0]->AccessList = (char **)malloc((arraySize + 1) * sizeof(char *));
         for (size_t i = 0; i < arraySize; i++)
         {
             cJSON *accessItem = cJSON_GetArrayItem(accessList, i);
             const char *accessValue = cJSON_GetStringValue(accessItem);
             paramAttributes[0]->AccessList[i] = strdup(accessValue);
         }
-
+        paramAttributes[0]->AccessList[arraySize] = NULL; // 指针数组结束标志
         paramAttributes[0]->Notification = atoi(cJSON_GetObjectItemCaseSensitive(node, "Notification")->valuestring);
-        paramAttributes[1] = NULL;//数组结束标志
+        paramAttributes[1] = NULL; // 数组结束标志
 
         return paramAttributes;
     }
     else
     {
         // 循环递归找参数
+        ParameterAttributeStruct **paramAttributes = (ParameterAttributeStruct **)malloc(sizeof(ParameterAttributeStruct *));
+        int length = 0;
+        paramAttributes[0] = NULL;
+        cJSON *child = node->child;
+        while (child)
+        {
+            char *newPath = (char *)malloc(strlen(parameter) + strlen(child->string) + 2);
+            strcpy(newPath, parameter);
+            strcat(newPath, child->string);
+            if (!cJSON_GetObjectItemCaseSensitive(child, "parameterType"))
+                strcat(newPath, ".");
 
+            ParameterAttributeStruct **param = getAttributesFromJson(newPath);
+            int len = 0;
+            while (param && param[len])
+                len++;
+            paramAttributes = (ParameterAttributeStruct **)realloc(paramAttributes, (length + len + 1) * sizeof(ParameterAttributeStruct *));
+            for (size_t i = 0; i < len; i++)
+            {
+                paramAttributes[length + i] = param[i];
+            }
+            paramAttributes[length + len] = NULL;
+            free(param);
+            length += len;
+            child = child->next;
+        }
+        return paramAttributes;
     }
 
     freePath(pathList);

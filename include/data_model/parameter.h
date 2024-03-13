@@ -1,35 +1,34 @@
 /**
  * @Copyright : Yangrongcan
-*/
+ */
 #ifndef _CWMP_PARAMETER_
 #define _CWMP_PARAMETER_
 
-#include<stdbool.h>
+#include <stdbool.h>
 // #include<cjson/cJSON.h>
-#include<cJSON.h>
+#include <cJSON.h>
 
 #define DATAFILE "../data.json"
 
 // 对parameter的权限
 #define READONLY 0
 #define WRITABLE 1
-#define Notification_Off 0 //通知关闭
-#define Passive_Notification 1 //被动通知，值变化时，新值包括在下次向ACS建立会话时发送Inform消息的ParameterList中。
-#define Active_Notification 2 //主动通知。值每发生变化，CPE必须启动到ACS的会话，并在相关的Inform消息的ParameterList中包括新值。
+#define Notification_Off 0     // 通知关闭
+#define Passive_Notification 1 // 被动通知，值变化时，新值包括在下次向ACS建立会话时发送Inform消息的ParameterList中。
+#define Active_Notification 2  // 主动通知。值每发生变化，CPE必须启动到ACS的会话，并在相关的Inform消息的ParameterList中包括新值。
 
 // 对Object的权限
-#define PresentObject 0 //必须存在
-#define CreateObject 1 //包括了AddObject和DeletteObject, 可创建和删除
-#define AddObject 2 //可创建
-#define DeletteObject 3 //可删除
-
+#define PresentObject 0 // 必须存在
+#define CreateObject 1  // 包括了AddObject和DeletteObject, 可创建和删除
+#define AddObject 2     // 可创建
+#define DeletteObject 3 // 可删除
 
 typedef struct
 {
-    char *name;//参数名
+    char *name; // 参数名
     // char *value;// 值
-    unsigned char writable;// 1 表示可写， 0 表示只读(已有宏定义)，若为只读则不需要保存到JSON文件
-    unsigned char notification;// 0 表示通知关闭， 1 表示被动通知， 2 表示主动通知(已有宏定义)
+    unsigned char writable;     // 1 表示可写， 0 表示只读(已有宏定义)，若为只读则不需要保存到JSON文件
+    unsigned char notification; // 0 表示通知关闭， 1 表示被动通知， 2 表示主动通知(已有宏定义)
     /**
      * 为其授予对指定参数的写访问权限的零个或多个实体的数组
      * 即有哪些方式可以修改参数的值，如ACS，Lan侧接口
@@ -38,21 +37,21 @@ typedef struct
      * 目前，没有指定其他WAN端配置协议的访问限制。
      * 默认情况下，在ACS对访问列表进行任何更改之前，应向上面指定的所有实体授予访问权限。
      * TR-069 ACS总是具有对所有可写参数的写访问权，而不管是否在访问列表上。
-    */
+     */
     char **AccessList;
     /*
         值类型包括：string、int、unsignedInt、boolean、dateTime、base64、anySimpleType
     */
-    char *valueType;// 值类型
-    void (*function)(); //与该参数相关的函数
+    char *valueType;    // 值类型
+    void (*function)(); // 与该参数相关的函数
 } Parameter;
 
 struct Object
 {
-    char *name;//对象名
+    char *name; // 对象名
     // 孩子
-    Parameter *child_parameter; //数组
-    struct Object *child_object; //数组
+    Parameter *child_parameter;  // 数组
+    struct Object *child_object; // 数组
 
     size_t NumOfParameter, NumOfObject;
 
@@ -60,7 +59,7 @@ struct Object
      * 1 表示可写， 0 表示只读(已有宏定义)
      * 表示AddObject是否可用于添加此对象的新实例。（不包括实例号）
      * 表示DeleteObject是否可用于删除此特定实例。（包括实例号）
-    */
+     */
     unsigned char writable;
     /*
         下一个可用的占位符序号， 默认为 0，表示该节点的子节点不是占位符； 如果 ≥1，说明子节点是占位符{i},且肯定有Object类型子节点
@@ -72,13 +71,13 @@ struct Object
     // 必须存在 PresentObject， 可创建和删除 CreateObject， 可创建 AddObject， 可删除 DeletteObject (已有宏定义)
     unsigned char limit;
     char *ParameterKey;
-    void (*function)(); //与该参数相关的函数
+    void (*function)(); // 与该参数相关的函数
 };
 
 // ParameterInfoStruct定义
-typedef struct 
+typedef struct
 {
-    char *name; // 可为部分路径或完整路径
+    char *name;             // 可为部分路径或完整路径
     unsigned char writable; // 若为部分路径即Object，则表示是否可使用addObject添加实例，即该路径的下一Object是否为占位符
 } ParameterInfoStruct;
 
@@ -90,7 +89,6 @@ typedef struct
     char **AccessList;
 } ParameterAttributeStruct;
 
-
 // 初始化对应的函数
 void init_dataModel();
 void init_object_struct(struct Object *tmp);
@@ -100,11 +98,12 @@ void set_parameter_struct(Parameter *param, char *name, unsigned char writable, 
 // 具体操作对应的函数
 void getAllParameters();
 void setParameter(const char *path, const char *value);
-void getParameter(const char *path, char** str);
+void getParameter(const char *path, char **str);
 void getParameterName(const char *path, const char *NextLevel, ParameterInfoStruct ***parameterList);
-int setParameterAttributes(ParameterAttributeStruct *parameterAttribute ,const bool NotificationChange, const bool AccessListChange, int numOfAccess);
+int setParameterAttributes(ParameterAttributeStruct *parameterAttribute, const bool NotificationChange, const bool AccessListChange, int numOfAccess);
 ParameterAttributeStruct **getParameterAttributes(const char *const *ParameterNames, const int numOfParameter);
-void addObject(const char *path);
+void addObject(const char *path, char **instanceNumber);
+void deleteObject(const char *path);
 
 // 数据模型相关的函数
 int addObjectToDataModel(char *path, const unsigned char writable, const unsigned char limit, void (*function)());
@@ -113,25 +112,25 @@ struct Object *findChildObject(struct Object *obj, const char *str);
 int addParameterToDataModel(char *path, unsigned char writable, unsigned char notification, char *valueType, void (*function)());
 void freePath(char **path);
 void iterateDataModel(struct Object *obj, char *str);
-int checkObjectPath();
+struct Object *checkObjectPath();
 int checkParameterPath();
-int addObjectToData();
+int addObjectToData(char **instanceNumber);
 unsigned char getWritable(const char *path);
-
 
 // 操作JSON数据文件的函数
 bool init_root();
 bool save_data();
-cJSON* createObjectPathToJsonData();
+cJSON *createObjectPathToJsonData();
 void createParameterPathToJsonData(Parameter *param);
-void SetParameterAttributesToJsonData(cJSON *node, Parameter *param, const char* value);
-void createObjectToJsonData(struct Object *placeholder);
+void SetParameterAttributesToJsonData(cJSON *node, Parameter *param, const char *value);
+char *createObjectToJsonData(struct Object *placeholder);
 void ObjectInstanceAttributeSupplementation(cJSON *node, struct Object *obj);
 int GetPlaceholderMaxNum(cJSON *node);
-cJSON* getParameterJSON();
-ParameterInfoStruct** getChildFromJson(const char *path);
+// int deleteObjectInJson(cJSON *node);
+cJSON *getParameterJSON();
+ParameterInfoStruct **getChildFromJson(const char *path);
 void getDescendantsFromJson(const char *path, cJSON *object, ParameterInfoStruct ***List, int *const index);
-ParameterAttributeStruct** getAttributesFromJson(const char *parameter);
+ParameterAttributeStruct **getAttributesFromJson(const char *parameter);
 void printAllParameters(cJSON *jsonObj, char *str);
 
 // 类型转换或判断等相关的函数

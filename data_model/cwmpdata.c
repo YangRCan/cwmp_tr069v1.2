@@ -12,7 +12,8 @@
 Operate operates[] = {
     {"get", getParameter},
     {"set", setParameter},
-    {"add", addObject}};
+    {"add", addObject},
+    {"delete", deleteObject}};
 
 /**
  * 数据初始化
@@ -26,7 +27,9 @@ void init()
     // iterateDataModel(NULL, NULL);
 
     // addObject测试
-    // addObject("Device.DHCPv4.Server.Pool.");
+    // char *str;
+    // addObject("Device.IP.Interface.{i}.", &str);
+    // if(str) printf("创建成功，实例号为: %s", str);
     // addObject("Device.IP.Interface.");
     // addObject("Device.IP.Interface.1.IPv4Address.");
 
@@ -49,18 +52,26 @@ void init()
     // setParameterAttributes(&param, true, true, 2);
 
     // 测试getParameterAttributes
-    char *str[] = {"Device.DeviceInfo.MemoryStatus.Total"};
-    ParameterAttributeStruct **param = getParameterAttributes((const char *const *)str, 1);
-    int index = 0;
-    while (param&&param[index])
-    {
-        printf("{ \" parameter \" : \" %s \"}, { \" Notification \" : \" %d \"}\n", param[index]->Name, param[index]->Notification);
-        printf("ACCESS: %s\n", param[index]->AccessList[0]);
-        free(param[index]->Name);
-        free(param[index]);
-        index++;
-    }
-    if(param) free(param);
+    // char *str[] = {"", "Device.DeviceInfo.MemoryStatus.Total"};
+    // ParameterAttributeStruct **param = getParameterAttributes((const char *const *)str, 2);
+    // int index = 0;
+    // while (param && param[index])
+    // {
+    //     printf("{ \" parameter \" : \" %s \"}, { \" Notification \" : \" %d \"}\n", param[index]->Name, param[index]->Notification);
+    //     int len = 0;
+    //     while (param[index]->AccessList[len])
+    //     {
+    //         printf("ACCESS HAVE: %s\n", param[index]->AccessList[len]);
+    //         free(param[index]->AccessList[len]);
+    //         len++;
+    //     }
+    //     free(param[index]->AccessList);
+    //     free(param[index]->Name);
+    //     free(param[index]);
+    //     index++;
+    // }
+    // if (param)
+    //     free(param);
 }
 
 /**
@@ -83,12 +94,12 @@ int main(int argc, char *argv[])
         {
             if (strcmp(operate, operates[i].key) == 0)
             {
-                if (strcmp(operate, "get") == 0 && strcmp(argv[2], "value") == 0 && argc == 3)
+                if (argc == 3 && strcmp(operate, "get") == 0 && strcmp(argv[2], "value") == 0)
                 {
                     getAllParameters();
                     break;
                 }
-                else if (strcmp(operate, "get") == 0 && strcmp(argv[2], "value") == 0)
+                else if (argc == 4 && strcmp(operate, "get") == 0 && strcmp(argv[2], "value") == 0)
                 {
                     char **str = (char **)malloc(sizeof(char *));
                     operates[i].function(argv[3], str);
@@ -98,7 +109,7 @@ int main(int argc, char *argv[])
                     free(str);
                     break;
                 }
-                else if (strcmp(operate, "get") == 0 && strcmp(argv[2], "name") == 0 && argc >= 4)
+                else if (argc == 5 && strcmp(operate, "get") == 0 && strcmp(argv[2], "name") == 0)
                 {
                     ParameterInfoStruct *parameterInfoStruct = NULL; // 结束标志
                     ParameterInfoStruct **List = &parameterInfoStruct;
@@ -114,12 +125,19 @@ int main(int argc, char *argv[])
                     free(List);
                     break;
                 }
-                else if (strcmp(operate, "set") == 0 && argc > 3)
+                else if (argc == 4 && strcmp(operate, "set") == 0)
                 {
                     operates[i].function(argv[2], argv[3]);
                     break;
                 }
-                else if (strcmp(operate, "add") == 0 && argc > 2)
+                else if (argc == 3 && strcmp(operate, "add") == 0)
+                {
+                    char *str;
+                    operates[i].function(argv[2], &str);
+                    printf("%s新建成功, 实例号为: %s", argv[2], str);
+                    break;
+                }
+                else if (argc == 3 && strcmp(operate, "delete") == 0)
                 {
                     operates[i].function(argv[2]);
                     break;
