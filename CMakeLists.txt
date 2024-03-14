@@ -8,7 +8,7 @@ cmake_minimum_required(VERSION 3.15)
 set(CMAKE_BUILD_TYPE Debug)
 
 # set the project name and version
-project(cwmp VERSION 1.0.0)
+project(cwmpclient VERSION 1.0.0)
 string(TIMESTAMP COMPILE_TIME %Y%m%d-%H%M%S)
 
 # PROJECT_SOURCE_DIR 宏对应的值就是我们在使用cmake命令时，后面紧跟的目录，一般是工程的根目录

@@ -14,6 +14,11 @@
         "stdio.h": "c",
         "stdlib.h": "c",
         "tr181.h": "c",
-        "typeinfo": "c"
+        "typeinfo": "c",
+        "cstdarg": "c",
+        "getopt.h": "c",
+        "cstdlib": "c",
+        "time.h": "c",
+        "time_tool.h": "c"
     }
 }

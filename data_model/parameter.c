@@ -119,7 +119,7 @@ void setParameter(const char *path, const char *value)
     if (strcmp(dataModel->name, PATH[0]) != 0)
     {
         printErrorInfo(FAULT_9003);
-        freePath(PATH);
+        freePath(PATH, count);
         return;
     }
 
@@ -127,13 +127,13 @@ void setParameter(const char *path, const char *value)
     if (faultCode > 0)
     {
         printErrorInfo(faultCode);
-        freePath(PATH);
+        freePath(PATH, count);
         return;
     }
     else if (faultCode < 0)
     {
         printErrorInfo(FAULT_9008);
-        freePath(PATH);
+        freePath(PATH, count);
         return;
     }
 
@@ -144,26 +144,26 @@ void setParameter(const char *path, const char *value)
         save_data();
         printf("Successfully modified");
     }
-    freePath(PATH);
+    freePath(PATH, count);
 }
 
 /**
  * 获取某属性名对应的配置的值，
- * 参数 name 指的是某对应参数的完整路径
+ * 参数 path 指的是某对应参数的完整路径
  */
 void getParameter(const char *path, char **str)
 {
     int length = strlen(path);
     if (path[length - 1] == '.')
     {
-        printErrorInfo(FAULT_9003);
+        printErrorInfo(FAULT_9005);
         return;
     }
     PATH = getSubStrings(path, &count);
     if (strcmp(dataModel->name, PATH[0]) != 0)
     {
-        printErrorInfo(FAULT_9003);
-        freePath(PATH);
+        printErrorInfo(FAULT_9005);
+        freePath(PATH, count);
         return;
     }
 
@@ -171,7 +171,7 @@ void getParameter(const char *path, char **str)
     if (faultCode > 0)
     {
         printErrorInfo(faultCode);
-        freePath(PATH);
+        freePath(PATH, count);
         return;
     }
 
@@ -181,7 +181,7 @@ void getParameter(const char *path, char **str)
         node = cJSON_GetObjectItemCaseSensitive(node, "value");
         *str = node->valuestring;
     }
-    freePath(PATH);
+    freePath(PATH, count);
 }
 
 /**
@@ -207,7 +207,7 @@ void getParameterName(const char *path, const char *NextLevel, ParameterInfoStru
     {
         if (parameterList)
         {
-            *parameterList = (ParameterInfoStruct **)malloc(2 * sizeof(ParameterInfoStruct *));
+            *parameterList = (ParameterInfoStruct **)realloc(*parameterList, 2 * sizeof(ParameterInfoStruct *));
 
             (*parameterList)[0] = (ParameterInfoStruct *)malloc(sizeof(ParameterInfoStruct));
             (*parameterList)[0]->name = concatenateStrings(ROOT, ".");
@@ -254,7 +254,7 @@ void getParameterName(const char *path, const char *NextLevel, ParameterInfoStru
         }
         if (node)
         {
-            *parameterList = (ParameterInfoStruct **)malloc(1 * sizeof(ParameterInfoStruct *));
+            // *parameterList = (ParameterInfoStruct **)malloc(1 * sizeof(ParameterInfoStruct *));
             int index = 0;
             getDescendantsFromJson(path, node, parameterList, &index);
             // 添加结束符号NULL
@@ -262,8 +262,12 @@ void getParameterName(const char *path, const char *NextLevel, ParameterInfoStru
             *parameterList = (ParameterInfoStruct **)realloc(*parameterList, (index + 1) * sizeof(ParameterInfoStruct *));
             (*parameterList)[index] = objectInfo;
         }
+        else
+        {
+            printErrorInfo(FAULT_9005);
+        }
     }
-    freePath(PATH);
+    freePath(PATH, count);
 }
 
 /**
@@ -276,7 +280,7 @@ int setParameterAttributes(ParameterAttributeStruct *parameterAttribute, const b
     if (strcmp(dataModel->name, pathList[0]) != 0)
     {
         printErrorInfo(FAULT_9005);
-        freePath(PATH);
+        freePath(PATH, count);
         return FAULT_9005;
     }
 
@@ -289,7 +293,7 @@ int setParameterAttributes(ParameterAttributeStruct *parameterAttribute, const b
             break;
         index++;
     }
-    freePath(pathList);
+    freePath(pathList, count);
 
     if (node)
     {
@@ -358,10 +362,10 @@ ParameterAttributeStruct **getParameterAttributes(const char *const *ParameterNa
             if (strcmp(dataModel->name, pathList[0]) != 0)
             {
                 printErrorInfo(FAULT_9005);
-                freePath(pathList);
+                freePath(pathList, count);
                 return NULL;
             }
-            freePath(pathList);
+            freePath(pathList, count);
             row = getAttributesFromJson(ParameterNames[i]);
         }
         else
@@ -404,7 +408,7 @@ void addObject(const char *path, char **instanceNumber)
     }
     addObjectToData(instanceNumber);
 
-    freePath(PATH);
+    freePath(PATH, count);
 }
 
 /**
@@ -479,7 +483,7 @@ int addObjectToDataModel(char *path, const unsigned char writable, const unsigne
 
     createObjectPathToJsonData(); // 并在数据文件中创建该路径
 
-    freePath(PATH);
+    freePath(PATH, count);
     free(path);
     return FAULT_0;
 }
@@ -528,7 +532,7 @@ struct Object *findChildObject(struct Object *obj, const char *str)
  * 添加parameter到dataModel中，即dataModel树的叶子
  * path以'.'分隔的最后一个元素为parameter的name
  */
-int addParameterToDataModel(char *path, unsigned char writable, unsigned char notification, char *valueType, void (*function)())
+int addParameterToDataModel(char *path, char *value, unsigned char writable, unsigned char notification, char *valueType, void (*function)())
 {
     int length = strlen(path);
     if (path[length - 1] == '.')
@@ -551,11 +555,11 @@ int addParameterToDataModel(char *path, unsigned char writable, unsigned char no
     init_parameter_struct(&(obj->child_parameter[obj->NumOfParameter - 1])); // 初始化参数
     set_parameter_struct(&(obj->child_parameter[obj->NumOfParameter - 1]), PATH[count], writable, notification, valueType, function);
 
-    createParameterPathToJsonData(&(obj->child_parameter[obj->NumOfParameter - 1])); // 把参数Path添加到json文件中
+    createParameterPathToJsonData(&(obj->child_parameter[obj->NumOfParameter - 1]), value); // 把参数Path添加到json文件中
 
     count++; // 恢复，为了正常释放PATH内存
 
-    freePath(PATH);
+    freePath(PATH, count);
     free(path);
     return FAULT_0;
 }
@@ -563,7 +567,7 @@ int addParameterToDataModel(char *path, unsigned char writable, unsigned char no
 /**
  * 释放全局变量PATH的空间
  */
-void freePath(char **path)
+void freePath(char **path, const int count)
 {
     if (path)
     {
@@ -741,12 +745,16 @@ unsigned char getWritable(const char *path)
 
     if (index < count)
     {
-        printErrorInfo(FAULT_9003);
-        return 0;
+        printErrorInfo(FAULT_9005);
+        if (!isObject)
+            count++;
+        freePath(pathList, count);
+        return -1;
     }
 
     if (isObject)
     {
+        free(pathList);
         return obj->writable;
     }
     else
@@ -760,7 +768,10 @@ unsigned char getWritable(const char *path)
         if (param)
             return param->writable;
         else
-            printErrorInfo(FAULT_9003);
+        {
+            printErrorInfo(FAULT_9005);
+            return -1;
+        }
     }
 }
 
@@ -860,7 +871,7 @@ cJSON *createObjectPathToJsonData()
 /**
  * 把参数Path路径添加到Json文件中，如果其中已存在则不会创建
  */
-void createParameterPathToJsonData(Parameter *param)
+void createParameterPathToJsonData(Parameter *param, char *value)
 {
     cJSON *node = createObjectPathToJsonData();
     if (!node)
@@ -870,7 +881,7 @@ void createParameterPathToJsonData(Parameter *param)
         cJSON *target = cJSON_CreateObject();
         cJSON_AddItemToObject(node, PATH[count], target);
         // cJSON_AddStringToObject(node, PATH[count], "");
-        SetParameterAttributesToJsonData(target, param, "");
+        SetParameterAttributesToJsonData(target, param, value);
         save_data();
     }
 }
@@ -1174,7 +1185,8 @@ void getDescendantsFromJson(const char *path, cJSON *object, ParameterInfoStruct
         int Length = pathLength + strlen(object->string) + 1;
         name = (char *)malloc(Length);
         strcpy(name, path);
-        strcat(name, object->string);
+        if (!strstr(name, object->string))
+            strcat(name, object->string);
         ParameterInfoStruct *parameterInfo = (ParameterInfoStruct *)malloc(sizeof(ParameterInfoStruct));
         parameterInfo->name = name;
         parameterInfo->writable = getWritable(name);
@@ -1264,7 +1276,7 @@ ParameterAttributeStruct **getAttributesFromJson(const char *parameter)
         return paramAttributes;
     }
 
-    freePath(pathList);
+    freePath(pathList, count);
 }
 
 /**

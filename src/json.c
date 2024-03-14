@@ -12,8 +12,6 @@
 #include "json.h"
 
 int test_JSON() {
-    printf("开始执行！\n");
-
     // // 创建一个 JSON 对象
     // cJSON *config = cJSON_CreateObject();
 
@@ -131,6 +129,5 @@ int test_JSON() {
 
     free(modifiedJsonString);
     cJSON_Delete(root);
-    printf("good");
     return 0;
 }

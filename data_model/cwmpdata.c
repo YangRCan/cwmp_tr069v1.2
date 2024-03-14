@@ -102,17 +102,20 @@ int main(int argc, char *argv[])
                 else if (argc == 4 && strcmp(operate, "get") == 0 && strcmp(argv[2], "value") == 0)
                 {
                     char **str = (char **)malloc(sizeof(char *));
+                    *str = NULL;
                     operates[i].function(argv[3], str);
-                    printf("{ \" parameter \" : \" %s \"}, { \" value \" : \" %s \"}\n", argv[3], *str);
+                    if (*str != NULL)
+                        printf("{ \" parameter \" : \" %s \"}, { \" value \" : \" %s \"}\n", argv[3], *str);
                     if (*str)
                         free(*str);
                     free(str);
                     break;
                 }
-                else if (argc == 5 && strcmp(operate, "get") == 0 && strcmp(argv[2], "name") == 0)
+                else if (argc > 3 && strcmp(operate, "get") == 0 && strcmp(argv[2], "name") == 0)
                 {
                     ParameterInfoStruct *parameterInfoStruct = NULL; // 结束标志
-                    ParameterInfoStruct **List = &parameterInfoStruct;
+                    ParameterInfoStruct **List = (ParameterInfoStruct **)malloc(sizeof(ParameterInfoStruct *));
+                    List[0] = parameterInfoStruct;
                     argc == 4 ? getParameterName(NULL, argv[3], &List) : getParameterName(argv[3], argv[4], &List);
                     int len = 0;
                     while (List[len] != NULL)

@@ -5,15 +5,15 @@
 				"parameterType":	"unsignedInt",
 				"value":	"",
 				"writable":	"0",
-				"Notification":	"1",
-				"AccessList":	["测试1", "测试3"]
+				"Notification":	"0",
+				"AccessList":	["Subscriber"]
 			},
 			"Free":	{
 				"parameterType":	"unsignedInt",
 				"value":	"",
 				"writable":	"0",
-				"Notification":	"2",
-				"AccessList":	["测试1", "测试2"]
+				"Notification":	"0",
+				"AccessList":	["Subscriber"]
 			}
 		},
 		"SpecVersion":	{
@@ -32,49 +32,49 @@
 		},
 		"Manufacturer":	{
 			"parameterType":	"string(:64)",
-			"value":	"",
+			"value":	"unionman",
 			"writable":	"0",
 			"Notification":	"2",
 			"AccessList":	["Subscriber"]
 		},
 		"ManufacturerOUI":	{
 			"parameterType":	"string(6)",
-			"value":	"",
+			"value":	"X_UNIONMAN",
 			"writable":	"0",
 			"Notification":	"2",
 			"AccessList":	["Subscriber"]
 		},
 		"ProductClass":	{
 			"parameterType":	"string(:64)",
-			"value":	"",
+			"value":	"STB",
 			"writable":	"0",
 			"Notification":	"2",
 			"AccessList":	["Subscriber"]
 		},
 		"SerialNumber":	{
 			"parameterType":	"string(:64)",
-			"value":	"",
+			"value":	"FFFFFF123456",
 			"writable":	"0",
 			"Notification":	"2",
 			"AccessList":	["Subscriber"]
 		},
 		"HardwareVersion":	{
 			"parameterType":	"string(:64)",
-			"value":	"",
+			"value":	"example_hw_version",
 			"writable":	"0",
 			"Notification":	"2",
 			"AccessList":	["Subscriber"]
 		},
 		"SoftwareVersion":	{
 			"parameterType":	"string(:64)",
-			"value":	"",
+			"value":	"example_sw_version",
 			"writable":	"0",
 			"Notification":	"2",
 			"AccessList":	["Subscriber"]
 		},
 		"IP":	{
 			"parameterType":	"string",
-			"value":	"",
+			"value":	"192.168.10.65",
 			"writable":	"0",
 			"Notification":	"2",
 			"AccessList":	["Subscriber"]
@@ -88,7 +88,7 @@
 		},
 		"DeviceLog":	{
 			"parameterType":	"string",
-			"value":	"",
+			"value":	"5",
 			"writable":	"0",
 			"Notification":	"0",
 			"AccessList":	["Subscriber"]
@@ -97,42 +97,42 @@
 	"ManagementServer":	{
 		"URL":	{
 			"parameterType":	"string(:256)",
-			"value":	"",
+			"value":	"http://120.25.230.119/",
 			"writable":	"1",
 			"Notification":	"0",
 			"AccessList":	["Subscriber"]
 		},
 		"Username":	{
 			"parameterType":	"string(:256)",
-			"value":	"",
+			"value":	"admin",
 			"writable":	"1",
 			"Notification":	"0",
 			"AccessList":	["Subscriber"]
 		},
 		"Password":	{
 			"parameterType":	"string(:256)",
-			"value":	"",
+			"value":	"admin",
 			"writable":	"1",
 			"Notification":	"0",
 			"AccessList":	["Subscriber"]
 		},
 		"PeriodicInformEnable":	{
 			"parameterType":	"boolean",
-			"value":	"",
+			"value":	"true",
 			"writable":	"1",
 			"Notification":	"0",
 			"AccessList":	["Subscriber"]
 		},
 		"PeriodicInformInterval":	{
 			"parameterType":	"unsignedInt(1:)",
-			"value":	"",
+			"value":	"300",
 			"writable":	"1",
 			"Notification":	"0",
 			"AccessList":	["Subscriber"]
 		},
 		"PeriodicInformTime":	{
 			"parameterType":	"dateTime",
-			"value":	"",
+			"value":	"1971-02-01T02:45:56",
 			"writable":	"1",
 			"Notification":	"0",
 			"AccessList":	["Subscriber"]

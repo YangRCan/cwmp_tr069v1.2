@@ -49,11 +49,11 @@ void Log(char *name, int priority, const char *format, ...) {
     time_t t = time(NULL);// 获取当前时间
     struct tm tm = *localtime(&t);//将日历时间转换为本地时间
     va_start(vl, format);
-    char buffer[1024];
+    char buffer[1024], result[1024];
     snprintf(buffer, sizeof(buffer), "%d-%02d-%02d %02d:%02d:%02d [%s] %s : %s", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, name, log_str[priority], format);
-    vsnprintf(buffer, sizeof(buffer), buffer, vl);
-    OutputDebugStringA(buffer); // 将日志信息输出到调试器
-    printf("%s\n",buffer);
+    vsnprintf(result, sizeof(result), buffer, vl);
+    OutputDebugStringA(result); // 将日志信息输出到调试器
+    // printf("%s\n",result);
     va_end(vl);
 #else //其他
     time_t t = time(NULL);// 获取当前时间
