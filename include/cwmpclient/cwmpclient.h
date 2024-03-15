@@ -5,7 +5,6 @@
 #define _CWMP_CLIENT_
 
 #define NAME "cwmpclient"
-#define CWMPVERSION "1.0.0"
 
 #define HELPINFO                                                                          \
     "Please use %s [OPTIONS]\n"                                                           \

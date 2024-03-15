@@ -1,9 +1,9 @@
 /**
  * @Copyright : Yangrongcan
  */
+#include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <getopt.h>
 
 #ifdef _WIN32
@@ -16,9 +16,14 @@
 #endif
 
 #include "cwmpclient.h"
+#include "cwmp.h"
+#include "CwmpConfig.h"
 #include "json.h"
 #include "log.h"
 #include "time_tool.h"
+#include "xml.h"
+
+using namespace std;
 
 struct option arg_opts[] = {
     {"boot", no_argument, NULL, 'b'},
@@ -35,7 +40,7 @@ static void printHelp(void)
 
 static void printVersion(void)
 {
-    printf("%s version: %s\n", NAME, CWMPVERSION);
+    printf("%s version: %d.%d.%d\n", NAME, CWMP_VERSION_MAJOR, CWMP_VERSION_MINOR, CWMP_VERSION_PATCH);
 }
 
 int main(int argc, char **argv)
@@ -61,27 +66,29 @@ int main(int argc, char **argv)
             break;
         case 'h':
             printHelp();
-            break;
+            exit(EXIT_SUCCESS);
         case 'v':
             printVersion();
-            break;
+            exit(EXIT_SUCCESS);
         default:
             printHelp();
             exit(EXIT_FAILURE);
         }
     }
 
-//确保只有一个程序在运行，若没有管理员权限，退出
+    createXML("./xml/bbb.xml");
+
+// 确保只有一个程序在运行，若没有管理员权限，退出
 #ifdef __linux__
     int fd = open("/var/run/easycwmp.pid", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-	if(fd == -1)
-		exit(EXIT_FAILURE);
-	if (flock(fd, LOCK_EX | LOCK_NB) == -1)
-		exit(EXIT_SUCCESS);
-	if(fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC) < 0 )
-		Log(NAME, L_NOTICE, "error in fcntl\n");
-	setlocale(LC_CTYPE, "");
-	umask(0037);
+    if (fd == -1)
+        exit(EXIT_FAILURE);
+    if (flock(fd, LOCK_EX | LOCK_NB) == -1)
+        exit(EXIT_SUCCESS);
+    if (fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC) < 0)
+        Log(NAME, L_NOTICE, "error in fcntl\n");
+    setlocale(LC_CTYPE, "");
+    umask(0037);
 
     if (getuid() != 0)
     {
@@ -89,8 +96,9 @@ int main(int argc, char **argv)
         exit(EXIT_FAILURE);
     }
 #elif _WIN32
-    HANDLE hMutex = CreateMutex(NULL, TRUE, NAME);
-    if (GetLastError() == ERROR_ALREADY_EXISTS) {
+    HANDLE hMutex = CreateMutex(NULL, TRUE, TEXT(NAME));
+    if (GetLastError() == ERROR_ALREADY_EXISTS)
+    {
         printf("Another instance of the application is already running.\n");
         CloseHandle(hMutex);
         exit(EXIT_FAILURE);
@@ -111,10 +119,9 @@ int main(int argc, char **argv)
         FreeSid(administratorsGroup);
     }
 #endif
-    
-    printf("%s", get_time());
 
-
+    cwmpInfo *cwmp = new cwmpInfo;
+	if (!cwmp) return -1;//分配失败
 
 #ifdef _WIN32
     CloseHandle(hMutex);

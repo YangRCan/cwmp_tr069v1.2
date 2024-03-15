@@ -89,6 +89,6 @@
 "</soap_env:Body>"													\
 "</soap_env:Envelope>"
 
-
+int createXML(const char* xmlPath);
 
 #endif // _CWMP_XML_

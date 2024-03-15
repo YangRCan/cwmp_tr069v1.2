@@ -126,7 +126,6 @@ void setParameter(const char *path, const char *value)
     int faultCode = checkParameterPath();
     if (faultCode > 0)
     {
-        printErrorInfo(faultCode);
         freePath(PATH, count);
         return;
     }
@@ -170,7 +169,6 @@ void getParameter(const char *path, char **str)
     int faultCode = checkParameterPath();
     if (faultCode > 0)
     {
-        printErrorInfo(faultCode);
         freePath(PATH, count);
         return;
     }
@@ -1315,7 +1313,7 @@ void printAllParameters(cJSON *jsonObj, char *str)
         else
         {
             cJSON *value = cJSON_GetObjectItemCaseSensitive(child, "value");
-            printf("{ \" parameter \" : \" %s%s \"}, { \" value \" : \" %s \"}\n", destination, child->string, value->valuestring);
+            printf("{ \" parameter \" : \" %s%s \"}, { \" value \" : \"%s\"}\n", destination, child->string, value->valuestring);
         }
         child = child->next;
     }

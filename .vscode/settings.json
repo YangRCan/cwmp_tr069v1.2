@@ -19,6 +19,10 @@
         "getopt.h": "c",
         "cstdlib": "c",
         "time.h": "c",
-        "time_tool.h": "c"
-    }
+        "time_tool.h": "c",
+        "cwmpconfig.h": "c",
+        "cwmpclient.h": "c",
+        "iostream": "cpp"
+    },
+    "C_Cpp.errorSquiggles": "disabled"
 }

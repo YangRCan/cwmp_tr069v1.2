@@ -15,6 +15,6 @@ enum {
 	L_DEBUG
 };
 
-void Log(char *name, int priority, const char *format, ...);
+void Log(const char *name, int priority, const char *format, ...);
 
 #endif

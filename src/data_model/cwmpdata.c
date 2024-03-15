@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
                     *str = NULL;
                     operates[i].function(argv[3], str);
                     if (*str != NULL)
-                        printf("{ \" parameter \" : \" %s \"}, { \" value \" : \" %s \"}\n", argv[3], *str);
+                        printf("{ \" parameter \" : \" %s \"}, { \" value \" : \"%s\"}\n", argv[3], *str);
                     if (*str)
                         free(*str);
                     free(str);

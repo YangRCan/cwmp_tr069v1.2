@@ -1,13 +1,14 @@
 /**
  * @Copyright : Yangrongcan
-*/
+ */
 #include <time.h>
+#include <stdio.h>
 #include "time_tool.h"
 
 static char local_time[32] = {0};
 /**
  * 获取当前时间并将其格式化为指定的字符串格式
-*/
+ */
 char *get_time(void)
 {
 	time_t t_time;
@@ -18,13 +19,12 @@ char *get_time(void)
 	if (t_tm == NULL)
 		return NULL;
 
-	if(strftime(local_time, sizeof(local_time), "%FT%T%z", t_tm) == 0)
+	if (strftime(local_time, sizeof(local_time), "%Y-%m-%d %H:%M:%S", t_tm) == 0)
 		return NULL;
-	
+
 	local_time[25] = local_time[24];
 	local_time[24] = local_time[23];
 	local_time[22] = ':';
 	local_time[26] = '\0';
-
 	return local_time;
 }

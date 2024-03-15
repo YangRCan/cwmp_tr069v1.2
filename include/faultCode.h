@@ -4,7 +4,7 @@
 #ifndef _CWMP_FAULTCODE_
 #define _CWMP_FAULTCODE_
 
-#define UNKNOWN_TIME "0001-01-01T00:00:00Z"
+#define UNKNOWN_TIME "0001-01-01T00:00:00Z"//"未知时间"
 
 /**
  * 失败类型的枚举
