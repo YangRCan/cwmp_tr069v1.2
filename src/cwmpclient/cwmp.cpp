@@ -1,8 +1,12 @@
 /**
  * @Copyright : Yangrongcan
  */
+#include <iostream>
 
 #include "cwmp.h"
+#include "cwmpclient.h"
+#include "log.h"
+#include "backup.h"
 
 event_code event_code_array[__EVENT_MAX] = {
 	[EVENT_BOOTSTRAP] = {"0 BOOTSTRAP", EVENT_SINGLE, EVENT_REMOVE_AFTER_INFORM},
@@ -21,7 +25,7 @@ event_code event_code_array[__EVENT_MAX] = {
 	[EVENT_M_DOWNLOAD] = {"M Download", EVENT_MULTIPLE, EVENT_REMOVE_AFTER_TRANSFER_COMPLETE},
 	[EVENT_M_UPLOAD] = {"M Upload", EVENT_MULTIPLE, EVENT_REMOVE_AFTER_TRANSFER_COMPLETE}};
 
-cwmpInfo::cwmpInfo(/* args */)
+cwmpInfo::cwmpInfo()
 {
 	this->retry_count = 0;
 	this->download_count = 0;
@@ -36,4 +40,28 @@ cwmpInfo::cwmpInfo(/* args */)
 
 cwmpInfo::~cwmpInfo()
 {
+}
+
+event* cwmpInfo::cwmp_add_event(int code, const char *key, int method_id, int backup) {
+	event *e = NULL;
+	int type = event_code_array[code].type;
+	Log(NAME, L_NOTICE, "add event '%s'\n", event_code_array[code].code);
+	if(type == EVENT_SINGLE) {
+		// 迭代事件链表,若事件已存在，返回NULL
+		for(auto it = this->events.begin(); it != this->events.end(); ++it) {
+			if(it->code == code) {
+				return NULL;
+			}
+		}
+	}
+
+	e = new event;
+	if(!e) return NULL;//内存分配失败
+	this->events.push_back(*e);
+	e->code = code;
+	e->key = key;
+	e->method_id = method_id;
+	if(backup == EVENT_BACKUP)
+		e->backup_node = backup_add_event(code, key, method_id);
+	return e;
 }

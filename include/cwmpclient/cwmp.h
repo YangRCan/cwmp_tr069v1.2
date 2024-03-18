@@ -7,6 +7,8 @@
 #include <list>
 #include <string>
 
+#include "tinyxml2.h"
+
 using namespace std;
 
 constexpr int MAX_DOWNLOAD = 10;
@@ -22,6 +24,11 @@ enum END_SESSION {
 enum EVENT_TYPE {
 	EVENT_SINGLE,
 	EVENT_MULTIPLE
+};
+
+enum EVENT_BACKUP_SAVE {
+	EVENT_NO_BACKUP = 0,
+	EVENT_BACKUP
 };
 
 enum EVENT_REMOVE_POLICY {
@@ -60,6 +67,7 @@ struct event {
 	int code;
 	string key;
 	int method_id;
+	tinyxml2::XMLElement *backup_node; //该事件对应的备份节点
 };
 
 struct download {
@@ -116,6 +124,9 @@ private:
 public:
     cwmpInfo();
     ~cwmpInfo();
+
+	event* cwmp_add_event(int code, const char *key, int method_id, int backup);
+
 	void add_scheduled_inform(char *key, int delay);
 	// void add_download(char *key, int delay, char *file_size, char *download_url, char *file_type, char *username, char *password, mxml_node_t *node);
 	// void add_upload(char *key, int delay, char *upload_url, char *file_type, char *username, char *password, mxml_node_t *node);

@@ -22,7 +22,9 @@
         "time_tool.h": "c",
         "cwmpconfig.h": "c",
         "cwmpclient.h": "c",
-        "iostream": "cpp"
+        "iostream": "cpp",
+        "filesystem": "cpp",
+        "iosfwd": "cpp"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }

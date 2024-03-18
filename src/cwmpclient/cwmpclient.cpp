@@ -17,13 +17,17 @@
 
 #include "cwmpclient.h"
 #include "cwmp.h"
+#include "backup.h"
 #include "CwmpConfig.h"
 #include "json.h"
 #include "log.h"
 #include "time_tool.h"
 #include "xml.h"
+#include "tinyxml2.h"
 
 using namespace std;
+
+cwmpInfo *cwmp;
 
 struct option arg_opts[] = {
     {"boot", no_argument, NULL, 'b'},
@@ -76,7 +80,12 @@ int main(int argc, char **argv)
         }
     }
 
-    createXML("./xml/bbb.xml");
+    cwmp = new cwmpInfo;
+	if (!cwmp) return -1;//分配失败
+
+    backup_init();
+    tinyxml2::XMLElement *e = backup_add_event(1, "test", 2);
+    cout << e->Value() << endl;
 
 // 确保只有一个程序在运行，若没有管理员权限，退出
 #ifdef __linux__
@@ -120,8 +129,7 @@ int main(int argc, char **argv)
     }
 #endif
 
-    cwmpInfo *cwmp = new cwmpInfo;
-	if (!cwmp) return -1;//分配失败
+    
 
 #ifdef _WIN32
     CloseHandle(hMutex);
