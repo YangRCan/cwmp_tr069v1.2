@@ -9,8 +9,6 @@
 
 #include "tinyxml2.h"
 
-using namespace std;
-
 constexpr int MAX_DOWNLOAD = 10;
 constexpr int MAX_UPLOAD = 10;
 constexpr int FAULT_ACS_8005 = 8005;
@@ -58,14 +56,14 @@ enum {
 
 struct event_code
 {
-	string code;
+	std::string code;
 	int type;
 	int remove_policy;
 };
 
 struct event {
 	int code;
-	string key;
+	std::string key;
 	int method_id;
 	tinyxml2::XMLElement *backup_node; //该事件对应的备份节点
 };
@@ -92,26 +90,26 @@ struct upload {
 };
 
 struct notification {
-	string parameter;
-	string value;
-	string type;
+	std::string parameter;
+	std::string value;
+	std::string type;
 };
 
 struct deviceInfo {
-	string manufacturer;
-	string oui;
-	string product_class;
-	string serial_number;
+	std::string manufacturer;
+	std::string oui;
+	std::string product_class;
+	std::string serial_number;
 };
 
 class cwmpInfo
 {
 private:
     /* data */
-    list<event> events;
-    list<notification> notifications;
-    list<download> downloads;
-    list<upload> uploads;
+    std::list<event> events;
+    std::list<notification> notifications;
+    std::list<download> downloads;
+    std::list<upload> uploads;
     deviceInfo deviceInfo;
     int retry_count;
     int download_count;
@@ -121,11 +119,20 @@ private:
     bool get_rpc_methods;
     bool hold_requests;
     int netlink_sock[2];
+	bool retry_inform;
 public:
     cwmpInfo();
     ~cwmpInfo();
+	void set_get_rpc_methods(bool flag);
+	void cwmp_init_deviceid(void);
 
 	event* cwmp_add_event(int code, const char *key, int method_id, int backup);
+
+	void cwmp_add_inform_timer(void);
+	void cwmp_do_inform(void);
+	void cwmp_do_inform_retry(int delaySeconds);
+
+	int cwmp_inform(void);
 
 	void add_scheduled_inform(char *key, int delay);
 	// void add_download(char *key, int delay, char *file_size, char *download_url, char *file_type, char *username, char *password, mxml_node_t *node);

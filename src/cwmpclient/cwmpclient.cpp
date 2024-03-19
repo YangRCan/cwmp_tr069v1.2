@@ -24,8 +24,7 @@
 #include "time_tool.h"
 #include "xml.h"
 #include "tinyxml2.h"
-
-using namespace std;
+#include "config.h"
 
 cwmpInfo *cwmp;
 
@@ -39,7 +38,7 @@ struct option arg_opts[] = {
 
 static void printHelp(void)
 {
-    printf(HELPINFO, NAME, NAME);
+    printf(HELP_INFO, NAME, NAME);
 }
 
 static void printVersion(void)
@@ -81,11 +80,26 @@ int main(int argc, char **argv)
     }
 
     cwmp = new cwmpInfo;
-	if (!cwmp) return -1;//分配失败
+    if (!cwmp)
+        return -1; // 分配失败
 
-    backup_init();
-    tinyxml2::XMLElement *e = backup_add_event(1, "test", 2);
-    cout << e->Value() << endl;
+    backup_init();              // 从备份文件中加载uploads、downloads、events .etc.
+    cwmp->cwmp_init_deviceid(); // 读取设备信息到cwmp的deviceInfo成员中
+
+    // 根据输入参数添加
+    // if (startEvent & START_BOOT)
+    // {
+    //     cwmp->cwmp_add_event(EVENT_BOOT, NULL, 0, EVENT_BACKUP);
+    //     cwmp->cwmp_add_inform_timer(); // 设置一个 inform 定时器，每隔 10 毫秒触发一次
+    // }
+    // if (startEvent & START_GET_RPC_METHOD)
+    // {
+    //     cwmp->set_get_rpc_methods(true); // 设置cwmp对象中get_rpc_methods的值为true
+    //     cwmp->cwmp_add_event(EVENT_PERIODIC, NULL, 0, EVENT_BACKUP);
+    //     cwmp->cwmp_add_inform_timer();
+    // }
+    config_load();
+    
 
 // 确保只有一个程序在运行，若没有管理员权限，退出
 #ifdef __linux__
@@ -128,8 +142,6 @@ int main(int argc, char **argv)
         FreeSid(administratorsGroup);
     }
 #endif
-
-    
 
 #ifdef _WIN32
     CloseHandle(hMutex);
