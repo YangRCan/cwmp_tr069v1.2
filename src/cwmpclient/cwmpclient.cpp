@@ -6,6 +6,9 @@
 #include <stdlib.h>
 #include <getopt.h>
 
+#include <chrono>
+#include <thread>
+
 #ifdef _WIN32
 #include <windows.h>
 #elif __linux__
@@ -136,7 +139,7 @@ int main(int argc, char **argv)
         if (!bIsAdmin)
         {
             Log(NAME, L_DEBUG, "Please run %s as root\n", "cwmp");
-            exit(EXIT_FAILURE);
+            //exit(EXIT_FAILURE);
         }
 
         FreeSid(administratorsGroup);
@@ -145,6 +148,9 @@ int main(int argc, char **argv)
 
 #ifdef _WIN32
     CloseHandle(hMutex);
+    ExitThread(0);
 #endif
+    
+    
     return 0;
 }

@@ -44,10 +44,12 @@ cwmpInfo::cwmpInfo()
 	this->netlink_sock[0] = 0;
 	this->netlink_sock[1] = 0;
 	this->retry_inform = false;
+	this->inform_num = 0;
 }
 
 cwmpInfo::~cwmpInfo()
 {
+	Log(NAME, L_DEBUG, "is die\n");
 }
 
 void cwmpInfo::cwmp_clean(void)
@@ -186,11 +188,13 @@ void cwmpInfo::cwmp_periodic_inform_init(void) {
 	if (config->acs->periodic_enable && config->acs->periodic_interval) {//检查了是否启用了周期性通知以及周期性通知的间隔是否已经配置
 		if (config->acs->periodic_time != -1){//已设置了参考时间，记录日志并根据参考时间和间隔设置周期性通知定时器
 			Log(NAME, L_NOTICE, "init periodic inform: reference time = %ld, interval = %d\n", config->acs->periodic_time, config->acs->periodic_interval);
-			std::thread periodicInform(&cwmpInfo::cwmp_periodic_inform, this, std::ref(this->inform_num), this->inform_num, cwmp_periodic_inform_time());
+			std::thread periodicInform(&cwmpInfo::cwmp_periodic_inform, this, (int)this->inform_num, this->cwmp_periodic_inform_time());
+			periodicInform.detach(); // 将线程分离，使得线程可以自主运行
 		}
 		else {//如果未设置参考时间，记录日志并根据间隔设置周期性通知定时器
 			Log(NAME, L_NOTICE, "init periodic inform: reference time = n/a, interval = %d\n", config->acs->periodic_interval);
-			std::thread periodicInform(&cwmpInfo::cwmp_periodic_inform, this, std::ref(this->inform_num), this->inform_num, config->acs->periodic_interval);
+			std::thread periodicInform(&cwmpInfo::cwmp_periodic_inform, this, (int)this->inform_num, config->acs->periodic_interval);
+			periodicInform.detach(); // 将线程分离，使得线程可以自主运行
 		}
 	}
 }
@@ -200,6 +204,7 @@ void cwmpInfo::cwmp_periodic_inform_init(void) {
  */
 int cwmpInfo::cwmp_inform(void)
 {
+	Log(NAME, L_NOTICE, "30s do one");
 	// tx::XMLElement *node;
 	// int method_id;
 
@@ -275,15 +280,20 @@ int cwmpInfo::cwmp_inform(void)
 /**
  * 定时调用自己，来实现定时上报
 */
-void cwmpInfo::cwmp_periodic_inform(std::atomic<int> &inform_num, int inform_num_copy, long interval)
+void cwmpInfo::cwmp_periodic_inform(int inform_num_copy, long interval)
 {
-	if (config->acs->periodic_enable && config->acs->periodic_interval && inform_num == inform_num_copy) {
+	using std::chrono::operator""s;
+	Log(NAME, L_DEBUG, "start thread %d\n", interval);
+	if (config->acs->periodic_enable && config->acs->periodic_interval && this->inform_num == inform_num_copy) {
 		std::this_thread::sleep_for(std::chrono::seconds(interval));
-		std::thread periodicInform(&cwmpInfo::cwmp_periodic_inform, this, std::ref(this->inform_num), inform_num_copy, config->acs->periodic_interval);
+		std::thread periodicInform(&cwmpInfo::cwmp_periodic_inform, this, inform_num_copy, config->acs->periodic_interval);
+		periodicInform.detach(); // 将线程分离，使得线程可以自主运行
+		Log(NAME, L_DEBUG, "create a new thread\n");
 	}
-	if (config->acs->periodic_enable && inform_num == inform_num_copy) {
-		this.cwmp_add_event(EVENT_PERIODIC, NULL, 0, EVENT_BACKUP);
-		this.cwmp_add_inform_timer();
+	if (config->acs->periodic_enable && this->inform_num == inform_num_copy) {
+		this->cwmp_add_event(EVENT_PERIODIC, "", 0, EVENT_BACKUP);
+		this->cwmp_add_inform_timer();
+		Log(NAME, L_DEBUG, "extract the inform function\n");
 	}
 }
 
@@ -291,10 +301,10 @@ void cwmpInfo::cwmp_periodic_inform(std::atomic<int> &inform_num, int inform_num
 /**
  * 计算下一次周期性通知的时间间隔
 */
-long int cwmp_periodic_inform_time(void)
+int cwmpInfo::cwmp_periodic_inform_time(void)
 {
-	long int delta_time;//用于存储当前时间与上次通知时间的差值
-	long int periodic_time;//用于存储计算后的下一次通知的时间间隔
+	int delta_time;//用于存储当前时间与上次通知时间的差值
+	int periodic_time;//用于存储计算后的下一次通知的时间间隔
 
 	delta_time = time(NULL) - config->acs->periodic_time;//计算当前时间与上次通知时间的差值
 	if(delta_time > 0)//大于 0，表示当前时间晚于上次通知时间

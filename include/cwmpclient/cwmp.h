@@ -134,7 +134,8 @@ private:
 	int netlink_sock[2];
 	bool retry_inform;
 	std::atomic<int> inform_num;//用于保证不重复上报，新建定期上报线程就得+1，值不大于100
-	void cwmpInfo::cwmp_periodic_inform(void)
+
+	void cwmp_periodic_inform(int inform_num_copy, long interval);
 public:
 	cwmpInfo();
 	~cwmpInfo();
@@ -153,6 +154,8 @@ public:
 	void cwmp_periodic_inform_init(void);
 
 	int cwmp_inform(void);
+
+	int cwmp_periodic_inform_time(void);
 };
 
 extern cwmpInfo *cwmp;

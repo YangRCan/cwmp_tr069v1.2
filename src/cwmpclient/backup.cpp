@@ -179,7 +179,7 @@ void backup_check_software_version(void)
     if(data) {//存在
         std::string software_version;
         if(config->device->software_version == software_version.assign(data->GetText())) {
-            cwmp->cwmp_add_event(EVENT_VALUE_CHANGE, NULL, 0, EVENT_NO_BACKUP);
+            cwmp->cwmp_add_event(EVENT_VALUE_CHANGE, "", 0, EVENT_NO_BACKUP);
         }
         cwmp_node->DeleteChild(data);
     }
