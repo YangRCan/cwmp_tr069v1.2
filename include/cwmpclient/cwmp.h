@@ -139,14 +139,20 @@ private:
 public:
 	cwmpInfo();
 	~cwmpInfo();
+	void set_get_rpc_methods(bool flag);
+	void set_deviceid(std::string manufacturer, std::string oui, std::string product_class, std::string serial_number);
+
+
+	void cwmp_init_deviceid(void);
+
 	void cwmp_clean(void);
 	void cwmp_clear_event_list(void);
 	void cwmp_clear_notifications(void);
 
-	void set_get_rpc_methods(bool flag);
-	void cwmp_init_deviceid(void);
 
 	event *cwmp_add_event(int code, std::string key, int method_id, int backup);
+	void cwmp_add_download(std::string key, int delay, std::string file_size, std::string download_url, std::string file_type, std::string username, std::string password, tx::XMLElement *node);
+	void cwmp_download_launch(int delay);
 
 	void cwmp_add_inform_timer(void);
 	void cwmp_do_inform(void);
@@ -154,6 +160,8 @@ public:
 	void cwmp_periodic_inform_init(void);
 
 	int cwmp_inform(void);
+
+	void cwmp_update_value_change(void);
 
 	int cwmp_periodic_inform_time(void);
 };

@@ -53,7 +53,7 @@
 		},
 		"SerialNumber":	{
 			"parameterType":	"string(:64)",
-			"value":	"FFFFFF123456",
+			"value":	"XUNION123456",
 			"writable":	"0",
 			"Notification":	"2",
 			"AccessList":	["Subscriber"]
@@ -97,7 +97,7 @@
 	"ManagementServer":	{
 		"URL":	{
 			"parameterType":	"string(:256)",
-			"value":	"http://120.25.230.119/",
+			"value":	"http://120.25.230.119:7547",
 			"writable":	"1",
 			"Notification":	"0",
 			"AccessList":	["Subscriber"]
@@ -125,7 +125,7 @@
 		},
 		"PeriodicInformInterval":	{
 			"parameterType":	"unsignedInt(1:)",
-			"value":	"300",
+			"value":	"3",
 			"writable":	"1",
 			"Notification":	"0",
 			"AccessList":	["Subscriber"]

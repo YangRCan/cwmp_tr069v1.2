@@ -28,8 +28,16 @@ file(GLOB_RECURSE DATA_SRC ${CMAKE_CURRENT_SOURCE_DIR}/src/data_model/*.c)
 #说明动态库存放位置
 # link_directories(${PROJECT_SOURCE_DIR}/lib)
 
+# 操作参数的程序
+add_executable(cwmpdata ${DATA_SRC} ${UTILS_LIST})
+# find_package(cJSON CONFIG REQUIRED)
+# target_link_libraries(cwmpdata PRIVATE cjson)
+
+# 从DATA_SRC中移除指定文件
+list(REMOVE_ITEM DATA_SRC ${CMAKE_CURRENT_SOURCE_DIR}/src/data_model/cwmpdata.c)
+
 # add the executable 主程序
-add_executable(${PROJECT_NAME} ${CWMPCLIENT_LIST} ${UTILS_LIST})
+add_executable(${PROJECT_NAME} ${CWMPCLIENT_LIST} ${DATA_SRC} ${UTILS_LIST})
 
 # PROJECT_BINARY_DIR 表示当前工程的二进制路径，即编译产物会存放到该路径，此时PROJECT_BINARY_DIR 就是 build 所在路径
 
@@ -51,11 +59,6 @@ endif()
 
 # find_package(cJSON CONFIG REQUIRED)
 # target_link_libraries(${PROJECT_NAME} PRIVATE cjson)
-
-# 操作参数的程序
-add_executable(cwmpdata ${DATA_SRC} ${UTILS_LIST})
-# find_package(cJSON CONFIG REQUIRED)
-# target_link_libraries(cwmpdata PRIVATE cjson)
 
 
 # cmake -G "MinGW Makefiles" .. -DCMAKE_TOOLCHAIN_FILE=D:/development_environment/vcpkg/scripts/buildsystems/vcpkg.cmake

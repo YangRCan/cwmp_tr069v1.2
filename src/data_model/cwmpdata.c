@@ -130,7 +130,7 @@ int main(int argc, char *argv[])
                 }
                 else if (argc == 4 && strcmp(operate, "set") == 0)
                 {
-                    operates[i].function(argv[2], argv[3]);
+                    operates[i].function(argv[2], argv[3], MUSTVERIFY);
                     break;
                 }
                 else if (argc == 3 && strcmp(operate, "add") == 0)

@@ -63,6 +63,7 @@ void config_exit(void);
 void config_load(void);
 
 static void config_init_package(void);
+void read_config_to_cwmp_deviceid(void);
 static int config_init_device(void);
 static int config_init_local(void);
 static int config_init_acs(void);

@@ -4,6 +4,7 @@
 #include <iostream>
 #include <filesystem>
 #include <fstream>
+#include <ctime>
 
 #include "tinyxml2.h"
 #include "backup.h"
@@ -140,6 +141,64 @@ void backup_load_event(void)
 
 void backup_load_download(void)
 {
+    tx::XMLElement *root = backup_doucment.RootElement();
+    tx::XMLElement *target;
+	int delay = 0;
+	unsigned int t;
+    std::string command_key, download_url, username, password, file_size, time_execute, file_type;
+
+    if(root) {
+	    tx::XMLElement *cwmp_node = root->FirstChildElement("cwmp");
+        if(cwmp_node) {
+            for(tx::XMLElement *b = cwmp_node->FirstChildElement("download"); b; b = b->NextSiblingElement("download")) {
+
+                target = b->FirstChildElement("command_key");
+                if (!target) return;
+                if (target->GetText()) command_key = target->GetText();
+                command_key = "";//没有就给空
+
+                target = b->FirstChildElement("url");
+                if (!target) return;
+                if (target->GetText()) download_url = target->GetText();
+                download_url = "";
+
+                target = b->FirstChildElement("username");
+                if (!target) return;
+                if (target->GetText()) username = target->GetText();
+                username = "";
+
+                target = b->FirstChildElement("password");
+                if(!target) return;
+                if(target->GetText()) password = target->GetText();
+                password = "";
+
+                target = b->FirstChildElement("file_size");
+                if(!target) return;
+                if(target->GetText()) file_size = target->GetText();
+                file_size = "";
+
+                target = b->FirstChildElement("time_execute");
+                if(!target) return;
+                if(target->GetText()) {
+                    time_execute = target->GetText();
+                    unsigned long value = std::stoul(time_execute);
+                    t = static_cast<unsigned int>(value);
+                    delay = t - time(NULL);
+                }
+
+                target = b->FirstChildElement("file_type");
+                if(!target) return;
+                if(target->GetText()) file_type = target->GetText();
+                file_type = "";
+
+                cwmp->cwmp_add_download(command_key, delay, file_size, download_url, file_size, username, password, b);
+            }
+        }else {
+            Log(NAME, L_DEBUG, "Failed to find the cwmp subtree.");
+        }
+    } else {
+        Log(NAME, L_DEBUG, "Failed to find root element.");
+    }
 }
 
 void backup_load_upload(void)

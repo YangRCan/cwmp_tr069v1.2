@@ -87,6 +87,7 @@ int main(int argc, char **argv)
         return -1; // 分配失败
 
     backup_init();              // 从备份文件中加载uploads、downloads、events .etc.
+    config_load();
     cwmp->cwmp_init_deviceid(); // 读取设备信息到cwmp的deviceInfo成员中
 
     // 根据输入参数添加
@@ -101,8 +102,6 @@ int main(int argc, char **argv)
     //     cwmp->cwmp_add_event(EVENT_PERIODIC, NULL, 0, EVENT_BACKUP);
     //     cwmp->cwmp_add_inform_timer();
     // }
-    config_load();
-    
 
 // 确保只有一个程序在运行，若没有管理员权限，退出
 #ifdef __linux__
@@ -148,7 +147,7 @@ int main(int argc, char **argv)
 
 #ifdef _WIN32
     CloseHandle(hMutex);
-    ExitThread(0);
+    ExitThread(0);//主动退出主线程
 #endif
     
     

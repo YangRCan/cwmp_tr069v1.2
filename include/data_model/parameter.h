@@ -4,6 +4,10 @@
 #ifndef _CWMP_PARAMETER_
 #define _CWMP_PARAMETER_
 
+#if defined(__cplusplus) || defined(c_plusplus)
+extern "C"{
+#endif
+
 #include <stdbool.h>
 // #include<cjson/cJSON.h>
 #include <cJSON.h>
@@ -22,6 +26,11 @@
 #define CreateObject 1  // 包括了AddObject和DeletteObject, 可创建和删除
 #define AddObject 2     // 可创建
 #define DeletteObject 3 // 可删除
+
+enum verifyParameter {
+    NOVERIFY = 0,
+    MUSTVERIFY
+};
 
 typedef struct
 {
@@ -97,7 +106,7 @@ void set_parameter_struct(Parameter *param, char *name, unsigned char writable, 
 
 // 具体操作对应的函数
 void getAllParameters();
-void setParameter(const char *path, const char *value);
+void setParameter(const char *path, const char *value, int verify);
 void getParameter(const char *path, char **str);
 void getParameterName(const char *path, const char *NextLevel, ParameterInfoStruct ***parameterList);
 int setParameterAttributes(ParameterAttributeStruct *parameterAttribute, const bool NotificationChange, const bool AccessListChange, int numOfAccess);
@@ -137,5 +146,9 @@ void printAllParameters(cJSON *jsonObj, char *str);
 char **getSubStrings(const char *input, int *count);
 char *concatenateStrings(const char *str1, const char *str2);
 bool isNumeric(const char *str);
+
+#if defined(__cplusplus)||defined(c_plusplus)
+}
+#endif
 
 #endif

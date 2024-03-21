@@ -107,7 +107,7 @@ void getAllParameters()
  * 修改某属性名对应的配置的值
  * （注：前提这个属性允许被修改）
  */
-void setParameter(const char *path, const char *value)
+void setParameter(const char *path, const char *value, int verify)
 {
     int length = strlen(path);
     if (path[length - 1] == '.')
@@ -129,7 +129,7 @@ void setParameter(const char *path, const char *value)
         freePath(PATH, count);
         return;
     }
-    else if (faultCode < 0)
+    else if (faultCode < 0 && verify == MUSTVERIFY)
     {
         printErrorInfo(FAULT_9008);
         freePath(PATH, count);

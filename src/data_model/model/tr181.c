@@ -57,7 +57,7 @@ void init_tr181_parameter()
     addParameterToDataModel(concatenateStrings(ROOT, ".DeviceInfo.SoftwareVersion"), "example_sw_version", READONLY, Active_Notification, "string(:64)", NULL);
     addParameterToDataModel(concatenateStrings(ROOT, ".DeviceInfo.IP"), "192.168.10.65", READONLY, Active_Notification, "string", NULL);
     addParameterToDataModel(concatenateStrings(ROOT, ".DeviceInfo.UpTime"), "", READONLY, Notification_Off, "unsignedInt", NULL);
-    addParameterToDataModel(concatenateStrings(ROOT, ".DeviceInfo.DeviceLog"), "5", READONLY, Notification_Off, "string", NULL);
+    addParameterToDataModel(concatenateStrings(ROOT, ".DeviceInfo.DeviceLog"), "", READONLY, Notification_Off, "string", NULL);
     addParameterToDataModel(concatenateStrings(ROOT, ".DeviceInfo.MemoryStatus.Total"), "", READONLY, Notification_Off, "unsignedInt", NULL);
     addParameterToDataModel(concatenateStrings(ROOT, ".DeviceInfo.MemoryStatus.Free"), "", READONLY, Notification_Off, "unsignedInt", NULL);
 

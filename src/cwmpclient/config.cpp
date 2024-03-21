@@ -64,7 +64,7 @@ void config_load(void)
 
     first_run = false;
 
-    // cwmp->cwmp_update_value_change(); // 向子进程发送update_value_change命令
+    cwmp->cwmp_update_value_change(); // 向子进程发送update_value_change命令
     return;
 }
 
@@ -138,6 +138,58 @@ static void config_init_package(void)
 }
 
 /**
+ * 从配置文件中读取信息到 cwmp 的成员 device 中
+*/
+void read_config_to_cwmp_deviceid(void) {
+    cJSON *deviceNode = cJSON_GetObjectItemCaseSensitive(config_root, "device");
+    if (!deviceNode || !cJSON_IsObject(deviceNode))
+    {
+        Log(NAME, L_DEBUG, "Error accessing device node.\n");
+        cJSON_Delete(config_root);
+    }
+    std::string manufacturer, oui, product_class, serial_number;
+    cJSON *child = deviceNode->child;
+    while (child != nullptr)
+    {
+        std::string str = child->string;
+        if (str == "manufacturer")
+        {
+            manufacturer = cJSON_GetStringValue(child);
+            Log(NAME, L_DEBUG, "device.manufacturer=%s\n", manufacturer.c_str());
+            child = child->next;
+            continue;
+        }
+        
+        if (str == "oui")
+        {
+            oui = cJSON_GetStringValue(child);
+            Log(NAME, L_DEBUG, "device.oui=%s\n", oui.c_str());
+            child = child->next;
+            continue;
+        }
+
+        if (str == "product_class")
+        {
+            product_class = cJSON_GetStringValue(child);
+            Log(NAME, L_DEBUG, "device.product_class=%s\n", product_class.c_str());
+            child = child->next;
+            continue;
+        }
+
+        if (str == "serial_number")
+        {
+            serial_number = cJSON_GetStringValue(child);
+            Log(NAME, L_DEBUG, "device.serial_number=%s\n", serial_number.c_str());
+            child = child->next;
+            continue;
+        }
+        child = child->next;
+    }
+
+    cwmp->set_deviceid(manufacturer, oui, product_class, serial_number);
+}
+
+/**
  * 从配置文件中获取device的相关选项配置，并且赋值到 config->device 结构体中
  */
 static int config_init_device(void)
@@ -183,9 +235,16 @@ static int config_init_local(void)
         // 从配置中提取不同的设置，比如接口、端口、用户名、密码等，并将其赋值给 config->local 结构体的相应成员
         if (str == "interface")
         {
-            // 为 config->local->interfaceName 分配内存并赋值
             config->local->interfaceName = cJSON_GetStringValue(child);
             Log(NAME, L_DEBUG, "local.interface=%s\n", config->local->interfaceName.c_str());
+            child = child->next;
+            continue;
+        }
+
+        if (str == "url")
+        {
+            config->local->ip = cJSON_GetStringValue(child);
+            Log(NAME, L_DEBUG, "local.ip=%s\n", config->local->ip.c_str());
             child = child->next;
             continue;
         }
