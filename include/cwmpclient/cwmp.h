@@ -151,7 +151,7 @@ public:
 
 
 	event *cwmp_add_event(int code, std::string key, int method_id, int backup);
-	void cwmp_add_download(std::string key, int delay, std::string file_size, std::string download_url, std::string file_type, std::string username, std::string password, tx::XMLElement *node);
+	void cwmp_add_download(std::string key, int delay, std::string file_size, std::string download_url, std::string file_type, std::string username, std::string password, tinyxml2::XMLElement *node);
 	void cwmp_download_launch(int delay);
 
 	void cwmp_add_inform_timer(void);

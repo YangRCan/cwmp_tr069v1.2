@@ -198,7 +198,8 @@ void cwmpInfo::cwmp_add_download(std::string key, int delay, std::string file_si
 	this->downloads.push_back(d);
 	Log(NAME, L_NOTICE, "add download: delay = %d sec, url = %s, FileType = '%s', CommandKey = '%s'\n", delay, d->download_url, d->file_type, d->key);
 	//创建定时线程去执行cwmp_download_launch函数
-
+	std::thread a(&cwmpInfo::cwmp_download_launch,this,10);
+	pthread_cancel(a.native_handle());
 }
 
 /**
