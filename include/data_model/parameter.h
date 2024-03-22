@@ -113,6 +113,8 @@ int setParameterAttributes(ParameterAttributeStruct *parameterAttribute, const b
 ParameterAttributeStruct **getParameterAttributes(const char *const *ParameterNames, const int numOfParameter);
 void addObject(const char *path, char **instanceNumber);
 void deleteObject(const char *path);
+void downloadFile(const char *url, const char *fileType, const char *fileSize, const char *username, const char *password);
+void applyDownloadFile(const char *fileType);
 
 // 数据模型相关的函数
 int addObjectToDataModel(char *path, const unsigned char writable, const unsigned char limit, void (*function)());
@@ -146,6 +148,7 @@ void printAllParameters(cJSON *jsonObj, char *str);
 char **getSubStrings(const char *input, int *count);
 char *concatenateStrings(const char *str1, const char *str2);
 bool isNumeric(const char *str);
+int download_file_to_dir(const char *url, const char *username, const char *password, const char *dir);
 
 #if defined(__cplusplus)||defined(c_plusplus)
 }

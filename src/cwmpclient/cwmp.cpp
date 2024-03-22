@@ -14,6 +14,7 @@
 #include "config.h"
 #include "time_tool.h"
 #include "parameter.h"
+#include "faultCode.h"
 #include "tr181.h"
 #include "tinyxml2.h"
 
@@ -103,14 +104,12 @@ void cwmpInfo::cwmp_clean(void)
 	cwmp_clear_notifications();
 	for (auto it = this->downloads.begin(); it != this->downloads.end(); ++it)
 	{
-		(*it)->cancelFlag = true;
-		delete *it;
+		(*it)->cancelFlag = true;//指向的空间不能释放，由线程自己去释放
 	}
 	this->downloads.clear();
 	for (auto it = this->uploads.begin(); it != this->uploads.end(); ++it)
 	{
 		(*it)->cancelFlag = true;
-		delete *it;
 	}
 	this->uploads.clear();
 	this->download_count = 0;
@@ -184,7 +183,8 @@ event *cwmpInfo::cwmp_add_event(int code, std::string key, int method_id, int ba
 void cwmpInfo::cwmp_add_download(std::string key, int delay, std::string file_size, std::string download_url, std::string file_type, std::string username, std::string password, tx::XMLElement *node)
 {
 	download *d = new download;
-	if(!d) return;
+	if (!d)
+		return;
 	cwmp->download_count++;
 	d->key = key;
 	d->file_size = file_size;
@@ -195,19 +195,40 @@ void cwmpInfo::cwmp_add_download(std::string key, int delay, std::string file_si
 	d->cancelFlag = false;
 	d->backup_node = node;
 	d->time_execute = time(NULL) + delay;
+	d->state = UD_NO_START;
 	this->downloads.push_back(d);
-	Log(NAME, L_NOTICE, "add download: delay = %d sec, url = %s, FileType = '%s', CommandKey = '%s'\n", delay, d->download_url, d->file_type, d->key);
-	//创建定时线程去执行cwmp_download_launch函数
-	std::thread a(&cwmpInfo::cwmp_download_launch,this,10);
-	pthread_cancel(a.native_handle());
+	Log(NAME, L_NOTICE, "add download: delay = %d sec, url = %s, FileType = '%s', CommandKey = '%s'\n", delay, d->download_url.c_str(), d->file_type.c_str(), d->key.c_str());
+	// 创建定时线程去执行cwmp_download_launch函数
+	std::thread downloadThread(&cwmpInfo::cwmp_download_launch, this, d, 10);
+	downloadThread.detach();
 }
 
 /**
  * 执行下载的函数
-*/
-void cwmpInfo::cwmp_download_launch(int delay)
+ */
+void cwmpInfo::cwmp_download_launch(download *d, int delay)
 {
-	
+	std::this_thread::sleep_for(std::chrono::seconds(delay));
+	if(d->cancelFlag == true) {
+		delete d;//释放下载事件存储的空间
+		return;
+	}
+	d->state = UD_EXECUTING;
+	Log(NAME, L_NOTICE, "start download url = %s, FileType = '%s', CommandKey = '%s'\n", d->download_url.c_str(), d->file_type.c_str(), d->key.c_str());
+	int code = FAULT_0;
+	std::string start_time(get_time());
+
+	// backup_remove_download(d->backup_node);//从备份文件中移除该节点
+	this->downloads.remove(d);
+	this->download_count--;
+	// tx::XMLElement *node = backup_add_transfer_complete(d->key, code, start_time, ++cwmp->method_id);
+	// if(!node) {
+	// 	delete d;
+	// 	return;
+	// }
+	cwmp->cwmp_add_event(EVENT_TRANSFER_COMPLETE, "", 0, EVENT_BACKUP);
+	cwmp->cwmp_add_event(EVENT_M_DOWNLOAD, d->key, cwmp->method_id, EVENT_BACKUP);
+
 }
 
 /**

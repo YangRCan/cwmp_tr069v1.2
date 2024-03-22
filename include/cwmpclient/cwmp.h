@@ -60,6 +60,12 @@ enum
 	__EVENT_MAX
 };
 
+enum UD_THREAD_STATE{//上传下载状态
+	UD_NO_START = 0,//未开始
+	UD_EXECUTING,//执行中
+	UD_FINISHED//已完成
+};
+
 struct event_code
 {
 	std::string code;
@@ -78,6 +84,7 @@ struct event
 struct download
 {
 	std::atomic<bool> cancelFlag;
+	int state; //下载状态 0：未开始 1：下载中； 2：下载完成（或者已经添加了下载完成事件）
 	std::string key;
 	std::string download_url;
 	std::string file_size;
@@ -152,7 +159,7 @@ public:
 
 	event *cwmp_add_event(int code, std::string key, int method_id, int backup);
 	void cwmp_add_download(std::string key, int delay, std::string file_size, std::string download_url, std::string file_type, std::string username, std::string password, tinyxml2::XMLElement *node);
-	void cwmp_download_launch(int delay);
+	void cwmp_download_launch(download *d, int delay);
 
 	void cwmp_add_inform_timer(void);
 	void cwmp_do_inform(void);

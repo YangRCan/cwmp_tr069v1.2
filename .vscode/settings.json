@@ -78,7 +78,8 @@
         "streambuf": "cpp",
         "thread": "cpp",
         "cinttypes": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "dirent.h": "c"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }

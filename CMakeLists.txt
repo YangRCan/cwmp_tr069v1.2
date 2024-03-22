@@ -30,8 +30,11 @@ file(GLOB_RECURSE DATA_SRC ${CMAKE_CURRENT_SOURCE_DIR}/src/data_model/*.c)
 
 # 操作参数的程序
 add_executable(cwmpdata ${DATA_SRC} ${UTILS_LIST})
-# find_package(cJSON CONFIG REQUIRED)
-# target_link_libraries(cwmpdata PRIVATE cjson)
+find_package(CURL REQUIRED)
+target_link_libraries(cwmpdata PRIVATE CURL::libcurl)
+if(CURL_FOUND)
+    message(STATUS "CURL found")
+endif()
 
 # 从DATA_SRC中移除指定文件
 list(REMOVE_ITEM DATA_SRC ${CMAKE_CURRENT_SOURCE_DIR}/src/data_model/cwmpdata.c)
@@ -44,9 +47,9 @@ add_executable(${PROJECT_NAME} ${CWMPCLIENT_LIST} ${DATA_SRC} ${UTILS_LIST})
 # 寻找 curl 和 xml2 库
 find_package(CURL REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE CURL::libcurl)
-if(CURL_FOUND)
-    message(STATUS "CURL found")
-endif()
+# if(CURL_FOUND)
+#     message(STATUS "CURL found")
+# endif()
 
 # find_package(LibXml2 REQUIRED)
 # target_link_libraries(${PROJECT_NAME} PRIVATE LibXml2::LibXml2)
@@ -63,3 +66,4 @@ endif()
 
 # cmake -G "MinGW Makefiles" .. -DCMAKE_TOOLCHAIN_FILE=D:/development_environment/vcpkg/scripts/buildsystems/vcpkg.cmake
 # cmake --build .
+# .\cwmpdata.exe download https://dss0.bdstatic.com/5aV1bjqh_Q23odCf/static/superman/js/lib/esl-d776bfb1aa.js '3 Vendor Configuration File' 100 admin admin

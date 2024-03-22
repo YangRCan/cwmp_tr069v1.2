@@ -13,7 +13,8 @@ Operate operates[] = {
     {"get", getParameter},
     {"set", setParameter},
     {"add", addObject},
-    {"delete", deleteObject}};
+    {"delete", deleteObject},
+    {"download", downloadFile}};
 
 /**
  * 数据初始化
@@ -143,6 +144,11 @@ int main(int argc, char *argv[])
                 else if (argc == 3 && strcmp(operate, "delete") == 0)
                 {
                     operates[i].function(argv[2]);
+                    break;
+                }
+                else if(argc == 7 && strcmp(operate, "download") == 0)
+                {
+                    operates[i].function(argv[2], argv[3], argv[4], argv[5], argv[6]);
                     break;
                 }
                 else

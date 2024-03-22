@@ -15,8 +15,8 @@
     "\t-----\tset [parameter] [value]\n"                                                                     \
     "\t-----\tadd [object]\n"                                                                                \
     "\t-----\tdelete [object]\n"                                                                             \
-    "\t-----\tdownload\n"                                                                                    \
-    "\t-----\tupload\n"                                                                                      \
+    "\t-----\tdownload [url] [fileType] [fileSize] [username] [password]\n"                                  \
+    "\t-----\tupload [url] [fileType] [username] [password]\n"                                               \
     "\t-----\tfactory_reset\n"                                                                               \
     "\t-----\treboot\n"                                                                                      \
     "\t-----\tinform [parameter|device_id]"

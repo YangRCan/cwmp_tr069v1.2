@@ -214,7 +214,14 @@ void backup_update_all_complete_time_transfer_complete(void)
  */
 void backup_check_acs_url(void)
 {
-    tx::XMLElement *b = backup_doucment.FirstChildElement("acs_url");
+    tx::XMLElement *root = backup_doucment.RootElement();
+    tx::XMLElement *cwmp_node = root->FirstChildElement("cwmp");
+    if (!cwmp_node)
+    {
+        backup_add_acsurl(config->acs->url.c_str()); // 更新备份文件中添加 ACS URL
+        return;
+    }
+    tx::XMLElement *b = cwmp_node->FirstChildElement("acs_url");
     std::string url;
     if (!b || url.assign(b->GetText()) != config->acs->url)
     {

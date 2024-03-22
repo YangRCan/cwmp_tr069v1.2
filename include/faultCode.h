@@ -4,6 +4,10 @@
 #ifndef _CWMP_FAULTCODE_
 #define _CWMP_FAULTCODE_
 
+#if defined(__cplusplus) || defined(c_plusplus)
+extern "C"{
+#endif
+
 #define UNKNOWN_TIME "0001-01-01T00:00:00Z"//"未知时间"
 
 /**
@@ -47,5 +51,10 @@ typedef struct
 extern fault_code fault_array[];
 
 void printErrorInfo(int faultCode);
+
+
+#if defined(__cplusplus) || defined(c_plusplus)
+}
+#endif
 
 #endif

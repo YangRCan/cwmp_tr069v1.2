@@ -5,6 +5,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <curl/curl.h>
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <sys/statvfs.h>
+#endif
 
 #include "parameter.h"
 #include "faultCode.h"
@@ -443,6 +449,80 @@ void deleteObject(const char *path)
     cJSON_DeleteItemFromObject(node, child->string); // 内部调用了cJSON_Delete将移除的对象释放
     // deleteObjectInJson(child);
     save_data();
+}
+
+/**
+ * 文件下载函数
+ * fileSize可为NULL，其余必须存在
+*/
+void downloadFile(const char *url, const char *fileType, const char *fileSize, const char *username, const char *password)
+{
+    // 检查参数
+    if (url == NULL || fileType == NULL || username == NULL || password == NULL) {
+        printErrorInfo(FAULT_9003);
+    }
+
+    // 默认下载到的路径
+    char *download_dir = strdup("./tmp");
+    unsigned long long freeSpace = 0;//剩余空间
+    // 路径不存在，创建
+#ifdef _WIN32
+    if (CreateDirectory(download_dir, NULL) == 0) {
+        if (GetLastError() != ERROR_ALREADY_EXISTS) {
+            perror("Failed to create download directory");
+            exit(EXIT_FAILURE);
+        }
+    }
+    ULARGE_INTEGER freeBytesAvailable;
+    if (GetDiskFreeSpaceEx(download_dir, &freeBytesAvailable, NULL, NULL) != 0) {
+        freeSpace = freeBytesAvailable.QuadPart;// 这里需要根据系统调用获取空间大小 以字节为单位
+    }
+#else
+    if (access(download_dir, F_OK) != 0) {
+        if (mkdir(download_dir, 0777) == -1) {
+            perror("Failed to create download directory");
+            exit(EXIT_FAILURE);
+        }
+    }
+    struct statvfs stat;
+    if (statvfs(download_dir, &stat) == 0) {
+        freeSpace = (unsigned long long)stat.f_bsize * stat.f_bavail; // 以字节为单位
+    }
+#endif
+    // fileSize存在，检测是否小于下载文件夹所剩空间，小于则下载，否则报错
+    if (fileSize != NULL) {
+        unsigned long long requiredSpace = atoll(fileSize);
+        printf("require: %llu, free: %llu\n", requiredSpace, freeSpace);
+        if (requiredSpace > freeSpace) {
+            perror("Insufficient space to download the file\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+    // 路径存在删除路径文件夹下的所有文件
+    char command[100];
+    snprintf(command, sizeof(command), "rm -rf %s/*", download_dir);
+    if (system(command) == -1) {
+        perror("Failed to remove existing files from download directory");
+        exit(EXIT_FAILURE);
+    }
+    // 将用户名和密码拼接到url路径中
+    char urlWithAuth[200];
+    snprintf(urlWithAuth, sizeof(urlWithAuth), "%s://%s:%s@%s", fileType, username, password, url);
+    // 进行下载
+    printf("Downloading file from: %s\n", urlWithAuth);
+    if (!download_file_to_dir(url, NULL, NULL, download_dir)) {
+        fprintf(stderr, "Download failed.\n");
+        exit(EXIT_FAILURE);
+    }
+    // 下载成功不做处理
+
+}
+
+/**
+ * 应用下载后的文件
+*/
+void applyDownloadFile(const char *fileType)
+{
 }
 
 /**#################################
@@ -1412,4 +1492,47 @@ bool isNumeric(const char *str)
     }
 
     return true; // 字符串中的所有字符都是数字
+}
+
+/**
+ * 下载文件
+*/
+int download_file_to_dir(const char *url, const char *username, const char *password, const char *dir) {
+    CURL *curl;
+    CURLcode res;
+    FILE *fp;
+    // 从 URL 中提取文件名
+    const char *filename = strrchr(url, '/');
+    if (!filename) {
+        fprintf(stderr, "Invalid URL.\n");
+        exit(EXIT_FAILURE);
+    }
+    filename++; // 移除斜杠
+    char output[FILENAME_MAX];// 下载后保存的文件名
+    snprintf(output, sizeof(output), "%s/%s", dir, filename);
+
+    curl = curl_easy_init();
+    if (curl) {
+        fp = fopen(output, "wb");
+        if (fp) {
+            curl_easy_setopt(curl, CURLOPT_URL, url);
+            // 设置用户名和密码（如果有的话）
+            if (username && password) {
+                curl_easy_setopt(curl, CURLOPT_USERPWD, username);
+            }
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, fwrite);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+
+            res = curl_easy_perform(curl);
+            if (res != CURLE_OK) {
+                fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+                fclose(fp);
+                curl_easy_cleanup(curl);
+                return 0; // 下载失败
+            }
+            fclose(fp);
+        }
+        curl_easy_cleanup(curl);
+    }
+    return 1; // 下载成功
 }
