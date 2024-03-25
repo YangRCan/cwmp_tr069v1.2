@@ -217,18 +217,41 @@ void cwmpInfo::cwmp_download_launch(download *d, int delay)
 	Log(NAME, L_NOTICE, "start download url = %s, FileType = '%s', CommandKey = '%s'\n", d->download_url.c_str(), d->file_type.c_str(), d->key.c_str());
 	int code = FAULT_0;
 	std::string start_time(get_time());
-
-	// backup_remove_download(d->backup_node);//从备份文件中移除该节点
-	this->downloads.remove(d);
+	downloadFile(d->download_url.c_str(), d->file_type.c_str(), d->file_size.c_str(), d->username.c_str(), d->password.c_str());
+	backup_remove_node(d->backup_node);//从备份文件中移除该节点
+	this->downloads.remove(d);//从链表中删除该download节点
 	this->download_count--;
-	// tx::XMLElement *node = backup_add_transfer_complete(d->key, code, start_time, ++cwmp->method_id);
-	// if(!node) {
-	// 	delete d;
-	// 	return;
-	// }
+	tx::XMLElement *node = backup_add_transfer_complete(d->key, code, start_time, ++cwmp->method_id);
+	if(!node) {
+		delete d;
+		return;
+	}
 	cwmp->cwmp_add_event(EVENT_TRANSFER_COMPLETE, "", 0, EVENT_BACKUP);
 	cwmp->cwmp_add_event(EVENT_M_DOWNLOAD, d->key, cwmp->method_id, EVENT_BACKUP);
 
+	int status = 1, fault = FAULT_0;
+	getExecutionStatus(&status, &fault);//获取执行下载后的结果状态
+	if(fault > 0) {//执行出错
+		code = fault;
+		Log(NAME, L_NOTICE, "download error: '%s'\n", fault_array[code].string);
+		backup_update_fault_transfer_complete(node, code);
+		return;
+	} else if(status != 1) {//命令不成功
+		code = FAULT_9002;
+		Log(NAME, L_NOTICE, "download error: '%s'\n", fault_array[code].string);
+		backup_update_fault_transfer_complete(node, code);
+		return;
+	}
+	applyDownloadFile(d->file_type.c_str());
+	getExecutionStatus(&status, &fault);//获取执行下载后的结果状态
+	if (fault > 0) {
+		code = fault;
+		Log(NAME, L_NOTICE, "download error: '%s'\n", fault_array[code].string);
+		backup_update_fault_transfer_complete(node, code);
+		return;
+	}
+	backup_update_complete_time_transfer_complete(node);
+	cwmp_add_inform_timer();
 }
 
 /**

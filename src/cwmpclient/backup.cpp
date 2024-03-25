@@ -11,7 +11,9 @@
 #include "config.h"
 #include "cwmp.h"
 #include "log.h"
+#include "faultCode.h"
 #include "cwmpclient.h"
+#include "time_tool.h"
 
 namespace tx = tinyxml2;
 namespace fs = std::filesystem;
@@ -143,43 +145,63 @@ void backup_load_download(void)
 {
     tx::XMLElement *root = backup_doucment.RootElement();
     tx::XMLElement *target;
-	int delay = 0;
-	unsigned int t;
+    int delay = 0;
+    unsigned int t;
     std::string command_key, download_url, username, password, file_size, time_execute, file_type;
 
-    if(root) {
-	    tx::XMLElement *cwmp_node = root->FirstChildElement("cwmp");
-        if(cwmp_node) {
-            for(tx::XMLElement *b = cwmp_node->FirstChildElement("download"); b; b = b->NextSiblingElement("download")) {
+    if (root)
+    {
+        tx::XMLElement *cwmp_node = root->FirstChildElement("cwmp");
+        if (cwmp_node)
+        {
+            for (tx::XMLElement *b = cwmp_node->FirstChildElement("download"); b; b = b->NextSiblingElement("download"))
+            {
 
                 target = b->FirstChildElement("command_key");
-                if (!target) return;
-                if (target->GetText()) command_key = target->GetText();
-                command_key = "";//没有就给空
+                if (!target)
+                    return;
+                if (target->GetText())
+                    command_key = target->GetText();
+                else
+                    command_key = ""; // 没有就给空
 
                 target = b->FirstChildElement("url");
-                if (!target) return;
-                if (target->GetText()) download_url = target->GetText();
-                download_url = "";
+                if (!target)
+                    return;
+                if (target->GetText())
+                    download_url = target->GetText();
+                else
+                    download_url = "";
 
                 target = b->FirstChildElement("username");
-                if (!target) return;
-                if (target->GetText()) username = target->GetText();
-                username = "";
+                if (!target)
+                    return;
+                if (target->GetText())
+                    username = target->GetText();
+                else
+                    username = "";
 
                 target = b->FirstChildElement("password");
-                if(!target) return;
-                if(target->GetText()) password = target->GetText();
-                password = "";
+                if (!target)
+                    return;
+                if (target->GetText())
+                    password = target->GetText();
+                else
+                    password = "";
 
                 target = b->FirstChildElement("file_size");
-                if(!target) return;
-                if(target->GetText()) file_size = target->GetText();
-                file_size = "";
+                if (!target)
+                    return;
+                if (target->GetText())
+                    file_size = target->GetText();
+                else
+                    file_size = "";
 
                 target = b->FirstChildElement("time_execute");
-                if(!target) return;
-                if(target->GetText()) {
+                if (!target)
+                    return;
+                if (target->GetText())
+                {
                     time_execute = target->GetText();
                     unsigned long value = std::stoul(time_execute);
                     t = static_cast<unsigned int>(value);
@@ -187,16 +209,23 @@ void backup_load_download(void)
                 }
 
                 target = b->FirstChildElement("file_type");
-                if(!target) return;
-                if(target->GetText()) file_type = target->GetText();
-                file_type = "";
+                if (!target)
+                    return;
+                if (target->GetText())
+                    file_type = target->GetText();
+                else
+                    file_type = "";
 
-                cwmp->cwmp_add_download(command_key, delay, file_size, download_url, file_size, username, password, b);
+                cwmp->cwmp_add_download(command_key, delay, file_size, download_url, file_type, username, password, b);
             }
-        }else {
+        }
+        else
+        {
             Log(NAME, L_DEBUG, "Failed to find the cwmp subtree.");
         }
-    } else {
+    }
+    else
+    {
         Log(NAME, L_DEBUG, "Failed to find root element.");
     }
 }
@@ -232,25 +261,28 @@ void backup_check_acs_url(void)
 /**
  * 检查是否已存在 software_version 相关节点，并检查其中的内容是否与配置中的 software_version 一致,
  * 若不一致，重构一个 "software_version" 的新节点，并更新配置文件中的值
-*/
+ */
 void backup_check_software_version(void)
 {
     tx::XMLElement *data;
     tx::XMLElement *root = backup_doucment.RootElement();
     tx::XMLElement *cwmp_node = root->FirstChildElement("cwmp");
-    if(!cwmp_node)
+    if (!cwmp_node)
         cwmp_node = backup_tree_init();
 
     data = cwmp_node->FirstChildElement("software_version");
-    if(data) {//存在
+    if (data)
+    { // 存在
         std::string software_version;
-        if(config->device->software_version == software_version.assign(data->GetText())) {
+        if (config->device->software_version == software_version.assign(data->GetText()))
+        {
             cwmp->cwmp_add_event(EVENT_VALUE_CHANGE, "", 0, EVENT_NO_BACKUP);
         }
         cwmp_node->DeleteChild(data);
     }
     data = backup_doucment.NewElement("software_version");
-    if(!data) return;
+    if (!data)
+        return;
     cwmp_node->InsertEndChild(data);
     data->SetText(config->device->software_version.c_str());
     // 保存更改后的备份文件
@@ -259,6 +291,35 @@ void backup_check_software_version(void)
         Log(NAME, L_DEBUG, "Failed to save backup.xml file.");
     }
     cwmp->cwmp_add_inform_timer();
+}
+
+/**
+ * 删除传入的节点
+ */
+int backup_remove_node(tx::XMLElement *node)
+{
+    if (!node)
+    {
+        Log(NAME, L_DEBUG, "Node pointer is NULL.\n");
+        return 1;
+    }
+    tx::XMLNode *parent = node->Parent();
+    if (parent)
+    {
+        parent->DeleteChild(node);
+    }
+    else
+    {
+        Log(NAME, L_DEBUG, "Failed to remove node: Parent node not found.\n");
+        return 1; // 失败
+    }
+    // 保存修改后的 XML 文件
+    if (backup_doucment.SaveFile(BACKUP_FILE) != tx::XML_SUCCESS)
+    {
+        Log(NAME, L_DEBUG, "Failed to save backup.xml file.");
+        return 1;
+    }
+    return 0;
 }
 
 /**
@@ -289,7 +350,6 @@ void backup_add_acsurl(const char *acs_url)
     cwmp->cwmp_add_event(EVENT_BOOTSTRAP, "", 0, EVENT_BACKUP);
     cwmp->cwmp_add_inform_timer();
 }
-
 
 /**
  * 向备份文件添加 event
@@ -339,3 +399,99 @@ tx::XMLElement *backup_add_event(int code, std::string key, int method_id)
 
     return event_node;
 }
+
+/**
+ * 在 cwmp 标签下添加 transfer_complete 标签及其子标签
+ */
+tx::XMLElement *backup_add_transfer_complete(std::string command_key, int fault_code, std::string start_time, int method_id)
+{
+    tx::XMLElement *transfer_complete, *target, *cwmp_node;
+    tx::XMLElement *root = backup_doucment.RootElement();
+    cwmp_node = root->FirstChildElement("cwmp");
+    if (!cwmp_node)
+        return NULL;
+    transfer_complete = backup_doucment.NewElement("transfer_complete");
+    if (!transfer_complete)
+        return NULL;
+    cwmp_node->InsertEndChild(transfer_complete);
+
+    target = backup_doucment.NewElement("command_key");
+    if (!target)
+        return NULL;
+    target->SetText(command_key.c_str());
+    transfer_complete->InsertEndChild(target);
+
+    target = backup_doucment.NewElement("fault_code");
+    if (!target)
+        return NULL;
+    target->SetText(fault_array[fault_code].code);
+    transfer_complete->InsertEndChild(target);
+
+    target = backup_doucment.NewElement("fault_string");
+    if (!target)
+        return NULL;
+    target->SetText(fault_array[fault_code].string);
+    transfer_complete->InsertEndChild(target);
+
+    target = backup_doucment.NewElement("start_time");
+    if (!target)
+        return NULL;
+    target->SetText(start_time.c_str());
+    transfer_complete->InsertEndChild(target);
+
+    target = backup_doucment.NewElement("complete_time");
+    if (!target)
+        return NULL;
+    target->SetText(UNKNOWN_TIME);
+    transfer_complete->InsertEndChild(target);
+
+    target = backup_doucment.NewElement("method_id");
+    if (!target)
+        return NULL;
+    target->SetText(std::to_string(method_id).c_str());
+    transfer_complete->InsertEndChild(target);
+
+    // 保存更改后的备份文件
+    if (backup_doucment.SaveFile(BACKUP_FILE) != tx::XML_SUCCESS)
+    {
+        Log(NAME, L_DEBUG, "Failed to save backup.xml file.");
+    }
+
+    return transfer_complete;
+}
+
+/**
+ * 传输出错，更新备份节点中的故障信息
+*/
+int backup_update_fault_transfer_complete(tx::XMLElement *node, int fault_code) {
+    tx::XMLElement *target;
+    target = node->FirstChildElement("fault_code");
+    if(!target) return -1;
+    target->SetText(fault_array[fault_code].code);
+
+    target = node->FirstChildElement("fault_string");
+    if(!target) return -1;
+    target->SetText(fault_array[fault_code].string);
+
+    // 保存更改后的备份文件
+    if (backup_doucment.SaveFile(BACKUP_FILE) != tx::XML_SUCCESS)
+    {
+        Log(NAME, L_DEBUG, "Failed to save backup.xml file.");
+    }
+    return 0;
+}
+
+/**
+ * 传输并且应用成功，更新备份节点 transfer_complete 中的完成时间
+*/
+int backup_update_complete_time_transfer_complete(tx::XMLElement *node) {
+    tx::XMLElement *target = node->FirstChildElement("complete_time");
+    if(!target) return -1;
+    target->SetText(get_time());
+    if (backup_doucment.SaveFile(BACKUP_FILE) != tx::XML_SUCCESS)
+    {
+        Log(NAME, L_DEBUG, "Failed to save backup.xml file.");
+    }
+    return 0;
+}
+
