@@ -81,7 +81,7 @@ void backup_init(void)
 }
 
 /**
- * 从backup_document中迭代查找event节点，并添加到event, 设置一个Inform定时器
+ * 从backup_document中迭代查找event节点，并添加到events, 设置一个Inform定时器
  */
 void backup_load_event(void)
 {
@@ -141,6 +141,9 @@ void backup_load_event(void)
     }
 }
 
+/**
+ * 从backup_document中迭代查找download节点，并添加到downloads链表
+ */
 void backup_load_download(void)
 {
     tx::XMLElement *root = backup_doucment.RootElement();
@@ -230,12 +233,124 @@ void backup_load_download(void)
     }
 }
 
+/**
+ * 从backup_document中迭代查找upload节点，并添加到uploads链表
+ */
 void backup_load_upload(void)
 {
+    tx::XMLElement *root = backup_doucment.RootElement();
+    tx::XMLElement *target;
+    int delay = 0;
+    unsigned int t;
+    std::string command_key, upload_url, username, password, file_type;
+
+    if (root)
+    {
+        tx::XMLElement *cwmp_node = root->FirstChildElement("cwmp");
+        if (cwmp_node)
+        {
+            for (tx::XMLElement *b = cwmp_node->FirstChildElement("upload"); b; b = b->NextSiblingElement("upload"))
+            {
+                target = b->FirstChildElement("command_key");
+                if (!target)
+                    return;
+                if (target->GetText())
+                    command_key = target->GetText();
+                else
+                    command_key = "";
+
+                target = b->FirstChildElement("url");
+                if (!target)
+                    return;
+                if (target->GetText())
+                    upload_url = target->GetText();
+                else
+                    upload_url = "";
+
+                target = b->FirstChildElement("username");
+                if (!target)
+                    return;
+                if (target->GetText())
+                    username = target->GetText();
+                else
+                    username = "";
+
+                target = b->FirstChildElement("password");
+                if (!target)
+                    return;
+                if (target->GetText())
+                    password = target->GetText();
+                else
+                    password = "";
+
+                target = b->FirstChildElement("time_execute");
+                if (!target)
+                    return;
+                if (target->GetText())
+                {
+                    std::string time_execute = target->GetText();
+                    unsigned long value = std::stoul(time_execute);
+                    t = static_cast<unsigned int>(value);
+                    delay = t - time(NULL);
+                }
+
+                target = b->FirstChildElement("file_type");
+                if (!target)
+                    return;
+                if (target->GetText())
+                    file_type = target->GetText();
+                else
+                    file_type = "";
+
+                cwmp->cwmp_add_upload(command_key, delay, upload_url, file_type, username, password, b);
+            }
+        }
+        else
+        {
+            Log(NAME, L_DEBUG, "Failed to find the cwmp subtree.");
+        }
+    }
+    else
+    {
+        Log(NAME, L_DEBUG, "Failed to find root element.");
+    }
 }
 
+/**
+ * 在backup_document中查找transfer_complete节点，修改其中的complete_time的值
+ */
 void backup_update_all_complete_time_transfer_complete(void)
 {
+    tx::XMLElement *target;
+    tx::XMLElement *root = backup_doucment.RootElement();
+    if (root)
+    {
+        tx::XMLElement *cwmp_node = root->FirstChildElement("cwmp");
+        if (cwmp_node)
+        {
+            for (tx::XMLElement *elem = cwmp_node->FirstChildElement("transfer_complete"); elem != nullptr; elem = elem->NextSiblingElement("transfer_complete"))
+            {
+                target = elem->FirstChildElement("complete_time");
+                if (!target)
+                    return;
+                if (target->GetText() && strcmp(target->GetText(), UNKNOWN_TIME) != 0)
+                    continue;
+                target->SetText(get_time());
+            }
+            if (backup_doucment.SaveFile(BACKUP_FILE) != tx::XML_SUCCESS)
+            {
+                Log(NAME, L_DEBUG, "Failed to save backup.xml file.");
+            }
+        }
+        else
+        {
+            Log(NAME, L_DEBUG, "Failed to find the cwmp subtree.");
+        }
+    }
+    else
+    {
+        Log(NAME, L_DEBUG, "Failed to find root element.");
+    }
 }
 
 /**
@@ -462,15 +577,18 @@ tx::XMLElement *backup_add_transfer_complete(std::string command_key, int fault_
 
 /**
  * 传输出错，更新备份节点中的故障信息
-*/
-int backup_update_fault_transfer_complete(tx::XMLElement *node, int fault_code) {
+ */
+int backup_update_fault_transfer_complete(tx::XMLElement *node, int fault_code)
+{
     tx::XMLElement *target;
     target = node->FirstChildElement("fault_code");
-    if(!target) return -1;
+    if (!target)
+        return -1;
     target->SetText(fault_array[fault_code].code);
 
     target = node->FirstChildElement("fault_string");
-    if(!target) return -1;
+    if (!target)
+        return -1;
     target->SetText(fault_array[fault_code].string);
 
     // 保存更改后的备份文件
@@ -483,10 +601,12 @@ int backup_update_fault_transfer_complete(tx::XMLElement *node, int fault_code) 
 
 /**
  * 传输并且应用成功，更新备份节点 transfer_complete 中的完成时间
-*/
-int backup_update_complete_time_transfer_complete(tx::XMLElement *node) {
+ */
+int backup_update_complete_time_transfer_complete(tx::XMLElement *node)
+{
     tx::XMLElement *target = node->FirstChildElement("complete_time");
-    if(!target) return -1;
+    if (!target)
+        return -1;
     target->SetText(get_time());
     if (backup_doucment.SaveFile(BACKUP_FILE) != tx::XML_SUCCESS)
     {
@@ -494,4 +614,3 @@ int backup_update_complete_time_transfer_complete(tx::XMLElement *node) {
     }
     return 0;
 }
-

@@ -14,7 +14,8 @@ Operate operates[] = {
     {"set", setParameter},
     {"add", addObject},
     {"delete", deleteObject},
-    {"download", downloadFile}};
+    {"download", downloadFile},
+    {"upload", uploadFile}};
 
 /**
  * 数据初始化
@@ -146,10 +147,17 @@ int main(int argc, char *argv[])
                     operates[i].function(argv[2]);
                     break;
                 }
-                else if(argc == 7 && strcmp(operate, "download") == 0)
+                else if (argc == 7 && strcmp(operate, "download") == 0)
                 {
                     operates[i].function(argv[2], argv[3], argv[4], argv[5], argv[6]);
                     break;
+                }
+                else if (argc >= 4 && strcmp(operate, "upload") == 0)
+                {
+                    if (argc == 4)
+                        operates[i].function(argv[2], argv[3], NULL, NULL);
+                    else
+                        operates[i].function(argv[2], argv[3], argv[4], argv[5]);
                 }
                 else
                 {

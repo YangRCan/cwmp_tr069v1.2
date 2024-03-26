@@ -104,7 +104,7 @@ void cwmpInfo::cwmp_clean(void)
 	cwmp_clear_notifications();
 	for (auto it = this->downloads.begin(); it != this->downloads.end(); ++it)
 	{
-		(*it)->cancelFlag = true;//指向的空间不能释放，由线程自己去释放
+		(*it)->cancelFlag = true; // 指向的空间不能释放，由线程自己去释放
 	}
 	this->downloads.clear();
 	for (auto it = this->uploads.begin(); it != this->uploads.end(); ++it)
@@ -209,8 +209,9 @@ void cwmpInfo::cwmp_add_download(std::string key, int delay, std::string file_si
 void cwmpInfo::cwmp_download_launch(download *d, int delay)
 {
 	std::this_thread::sleep_for(std::chrono::seconds(delay));
-	if(d->cancelFlag == true) {
-		delete d;//释放下载事件存储的空间
+	if (d->cancelFlag == true)
+	{
+		delete d; // 释放下载事件存储的空间
 		return;
 	}
 	d->state = UD_EXECUTING;
@@ -218,40 +219,117 @@ void cwmpInfo::cwmp_download_launch(download *d, int delay)
 	int code = FAULT_0;
 	std::string start_time(get_time());
 	downloadFile(d->download_url.c_str(), d->file_type.c_str(), d->file_size.c_str(), d->username.c_str(), d->password.c_str());
-	backup_remove_node(d->backup_node);//从备份文件中移除该节点
-	this->downloads.remove(d);//从链表中删除该download节点
+	backup_remove_node(d->backup_node); // 从备份文件中移除该节点
+	this->downloads.remove(d);			// 从链表中删除该download节点
 	this->download_count--;
-	tx::XMLElement *node = backup_add_transfer_complete(d->key, code, start_time, ++cwmp->method_id);
-	if(!node) {
+	tx::XMLElement *node = backup_add_transfer_complete(d->key, code, start_time, ++this->method_id);
+	if (!node)
+	{
 		delete d;
 		return;
 	}
-	cwmp->cwmp_add_event(EVENT_TRANSFER_COMPLETE, "", 0, EVENT_BACKUP);
-	cwmp->cwmp_add_event(EVENT_M_DOWNLOAD, d->key, cwmp->method_id, EVENT_BACKUP);
+	this->cwmp_add_event(EVENT_TRANSFER_COMPLETE, "", 0, EVENT_BACKUP);
+	this->cwmp_add_event(EVENT_M_DOWNLOAD, d->key, this->method_id, EVENT_BACKUP);
 
 	int status = 1, fault = FAULT_0;
-	getExecutionStatus(&status, &fault);//获取执行下载后的结果状态
-	if(fault > 0) {//执行出错
+	getExecutionStatus(&status, &fault); // 获取执行下载后的结果状态
+	if (fault > 0)
+	{ // 执行出错
 		code = fault;
 		Log(NAME, L_NOTICE, "download error: '%s'\n", fault_array[code].string);
 		backup_update_fault_transfer_complete(node, code);
+		this->cwmp_add_inform_timer();
 		return;
-	} else if(status != 1) {//命令不成功
+	}
+	else if (status != 1)
+	{ // 命令不成功
 		code = FAULT_9002;
 		Log(NAME, L_NOTICE, "download error: '%s'\n", fault_array[code].string);
 		backup_update_fault_transfer_complete(node, code);
+		this->cwmp_add_inform_timer();
 		return;
 	}
 	applyDownloadFile(d->file_type.c_str());
-	getExecutionStatus(&status, &fault);//获取执行下载后的结果状态
-	if (fault > 0) {
+	getExecutionStatus(&status, &fault); // 获取执行下载后的结果状态
+	if (fault > 0)
+	{
 		code = fault;
 		Log(NAME, L_NOTICE, "download error: '%s'\n", fault_array[code].string);
 		backup_update_fault_transfer_complete(node, code);
+		this->cwmp_add_inform_timer();
 		return;
 	}
 	backup_update_complete_time_transfer_complete(node);
-	cwmp_add_inform_timer();
+	this->cwmp_add_inform_timer();
+}
+
+/**
+ * 向cwmp中的uploads列表添加上传任务
+ */
+void cwmpInfo::cwmp_add_upload(std::string key, int delay, std::string upload_url, std::string file_type, std::string username, std::string password, tinyxml2::XMLElement *node)
+{
+	upload *ul = new upload;
+	if(!ul) return;
+	this->upload_count++;
+
+	ul->key = key;
+	ul->upload_url = upload_url;
+	ul->file_type = file_type;
+	ul->username = username;
+	ul->password = password;
+	ul->backup_node = node;
+	ul->time_execute = time(NULL) + delay;
+	this->uploads.push_back(ul);
+	Log(NAME, L_NOTICE, "add upload: delay = %d sec, url = %s, FileType = '%s', CommandKey = '%s'\n", delay, ul->upload_url.c_str(), ul->file_type.c_str(), ul->key.c_str());
+	// 创建定时线程去执行cwmp_upload_launch函数
+	std::thread downloadThread(&cwmpInfo::cwmp_upload_launch, this, ul, 10);
+	downloadThread.detach();
+}
+
+/**
+ * 上传线程执行的函数
+*/
+void cwmpInfo::cwmp_upload_launch(upload *ul, int delay) {
+	std::this_thread::sleep_for(std::chrono::seconds(delay));
+	if (ul->cancelFlag == true)
+	{
+		delete ul; // 释放下载事件存储的空间
+		return;
+	}
+	Log(NAME, L_NOTICE, "start upload url = %s, FileType = '%s', CommandKey = '%s'\n", ul->upload_url.c_str(), ul->file_type.c_str(), ul->key.c_str());
+	int code = FAULT_0;
+	std::string start_time(get_time());
+	uploadFile(ul->upload_url.c_str(), ul->file_type.c_str(), ul->username.c_str(), ul->password.c_str());
+	backup_remove_node(ul->backup_node);
+	this->uploads.remove(ul);
+	this->upload_count--;
+	tinyxml2::XMLElement *node = backup_add_transfer_complete(ul->key, code, start_time, ++this->method_id);
+	if(!node) {
+		delete ul;
+		return;
+	}
+	this->cwmp_add_event(EVENT_TRANSFER_COMPLETE, NULL, 0, EVENT_BACKUP);
+	this->cwmp_add_event(EVENT_M_UPLOAD, ul->key, this->method_id, EVENT_BACKUP);
+	int status = 1, fault = FAULT_0;
+	getExecutionStatus(&status, &fault);
+	if (fault > 0)
+	{ // 执行出错
+		code = fault;
+		Log(NAME, L_NOTICE, "upload error: '%s'\n", fault_array[code].string);
+		backup_update_fault_transfer_complete(node, code);
+		this->cwmp_add_inform_timer();
+		return;
+	}
+	else if (status != 1)
+	{ // 命令不成功
+		code = FAULT_9002;
+		Log(NAME, L_NOTICE, "upload error: '%s'\n", fault_array[code].string);
+		backup_update_fault_transfer_complete(node, code);
+		this->cwmp_add_inform_timer();
+		return;
+	}
+	backup_update_complete_time_transfer_complete(node);
+	this->cwmp_add_inform_timer();
 }
 
 /**

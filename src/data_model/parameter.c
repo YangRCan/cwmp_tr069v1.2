@@ -11,6 +11,10 @@
 #else
 #include <sys/statvfs.h>
 #endif
+#if defined(__ANDROID__)
+#include <unistd.h>
+#include <sys/stat.h>
+#endif // __ANDROID__
 
 #include "parameter.h"
 #include "faultCode.h"
@@ -588,7 +592,7 @@ void applyDownloadFile(const char *fileType)
 {
     printf("正在安装文件");
     if(strcmp(fileType, "1 Firmware Upgrade Image")) {
-#if defined(__Android__)
+#if defined(__ANDROID__)
     printf("Applying update.zip...\n");
     // 执行写入命令到/cache/recovery/command的操作
     char *buffer[100];
@@ -598,8 +602,116 @@ void applyDownloadFile(const char *fileType)
     system("sync");
     // 重启到recovery模式
     system("reboot recovery");
-#endif // _Android_
+#endif // __ANDROID__
     }
+}
+
+/**
+ * 文件上传函数
+*/
+void uploadFile(const char *url, const char *fileType, const char *username, const char *password) {
+    // 检查参数
+    if (url == NULL || fileType == NULL)
+    {
+        printErrorInfo(FAULT_9003);
+        Fault_Code = FAULT_9003;
+        return;
+    }
+#if defined(__ANDROID__)
+
+    FILE *fp;
+    char *serial = (char*)malloc(32 * sizeof(char));
+    // getprop | grep ro.serialno
+    fp = popen("getprop ro.serialno", "r");
+    if (fp == NULL) {
+        printf("Error: Failed to execute getprop command\n");
+        Fault_Code = FAULT_9002;
+        return;
+    }
+    if (fgets(serial, 32, fp) != NULL) {
+        // 移除末尾的换行符
+        serial[strcspn(serial, "\n")] = '\0';
+    } else {
+        printf("Error: Failed to read serial number\n");
+        Fault_Code = FAULT_9002;
+        return;
+    }
+    pclose(fp);
+    if (strlen(serial) == 0) {//如果序列号不存在
+        strcpy(serial, "XUNION123456");//默认序列号
+    }
+    printf("Serial number: %s\n", serial);
+    char up_url[255];
+    // 处理URL
+    if (username && username[0] != '\0' || password && password[0] != '\0') {
+        snprintf(up_url, 48, "%s://%s:%s@", url, username, password);
+        printf("%s\n", up_url);
+    }
+    //上传日日志
+    if(strcmp(fileType, "Vendor Log File") == 0) {
+        char save_dir[] = "/cache/cwmp";
+        if (access(save_dir, F_OK) == -1) {
+            // 目录不存在，创建它
+            if (mkdir(save_dir, 0777) == -1) {
+                printf("Error creating directory %s\n", save_dir);
+                Fault_Code = FAULT_9002;
+                return;
+            }
+        }
+        char file_path[256];
+        sprintf(file_path, "%s/log(%s).txt", save_dir, serial);
+        // 执行 logcat 命令并获取输出
+        FILE *fp = popen("logcat -d", "r");
+        if (fp == NULL) {
+            printf("Error executing logcat command\n");
+            Fault_Code = FAULT_9002;
+            return;
+        }
+        // 创建文件并写入logcat输出
+        FILE *outputFile = fopen(file_path, "w");
+        if (outputFile == NULL) {
+            printf("Error creating output file\n");
+            pclose(fp);
+            Fault_Code = FAULT_9002;
+            return;
+        }
+        char buffer[4096];
+        while (fgets(buffer, sizeof(buffer), fp) != NULL) {
+            fputs(buffer, outputFile);
+        }
+        // 关闭文件和流
+        fclose(outputFile);
+        pclose(fp);
+        printf("Logcat saved to: %s\n", file_path);
+
+        //将文件上传
+        CURL *curl;
+        CURLcode res;
+        //初始化
+        curl = curl_easy_init();
+        if(curl) {
+            curl_easy_setopt(curl, CURLOPT_URL, url);
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, file_path);
+            if (username && username[0] != '\0' && password && password[0] != '\0') {
+                char *un_pw[100];
+                snprintf(un_pw, 100, "%s:%s", username, password);
+                curl_easy_setopt(curl, CURLOPT_USERPWD, un_pw);
+            }
+            res = curl_easy_perform(curl);
+            if (res != CURLE_OK) {
+                fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+                Fault_Code = FAULT_9011;
+            }
+            curl_easy_cleanup(curl);
+        }
+    } else if(strcmp(fileType, "Vendor Configuration File")) {
+
+    }
+    free(serial);
+
+#endif // __ANDROID__
+    Fault_Code = FAULT_0;
+    exe_status = 1;//成功
 }
 
 /**#################################
