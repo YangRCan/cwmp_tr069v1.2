@@ -64,7 +64,7 @@ void config_load(void)
 
     first_run = false;
 
-    cwmp->cwmp_update_value_change(); // 向子进程发送update_value_change命令
+    cwmp->cwmp_update_value_change(); // 从配置文件读取更新，数据文件的内容
     return;
 }
 

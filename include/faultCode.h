@@ -8,7 +8,7 @@
 extern "C"{
 #endif
 
-#define UNKNOWN_TIME "0001-01-01T00:00:00Z"//"未知时间"
+#define UNKNOWN_TIME "0001-01-01T00:00:00"//"未知时间"
 
 /**
  * 失败类型的枚举

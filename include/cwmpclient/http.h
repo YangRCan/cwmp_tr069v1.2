@@ -10,7 +10,7 @@ static const char *fc_cookies = "./backup/easycwmp_cookies";
 struct http_client
 {
 	curl_slist *header_list;
-	char *url;
+	std::string url;
 };
 
 int http_client_init(void);

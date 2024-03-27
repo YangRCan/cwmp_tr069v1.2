@@ -12,7 +12,7 @@ project(cwmpclient VERSION 1.0.0)
 string(TIMESTAMP COMPILE_TIME %Y%m%d-%H%M%S)
 
 # PROJECT_SOURCE_DIR 宏对应的值就是我们在使用cmake命令时，后面紧跟的目录，一般是工程的根目录
-configure_file(${PROJECT_SOURCE_DIR}/src/CwmpConfig.h.in ${PROJECT_SOURCE_DIR}/include/cwmpclient/CwmpConfig.h)
+configure_file(${PROJECT_SOURCE_DIR}/src/CwmpConfig.h.in ${PROJECT_SOURCE_DIR}/include/CwmpConfig.h)
 
 include_directories(${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/include/cwmpclient ${PROJECT_SOURCE_DIR}/include/data_model ${PROJECT_SOURCE_DIR}/include/data_model/model)
 

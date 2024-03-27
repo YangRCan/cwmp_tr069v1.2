@@ -98,6 +98,14 @@ typedef struct
     char **AccessList;
 } ParameterAttributeStruct;
 
+typedef struct
+{
+    char *data;
+    char *name;
+    char *type;
+} InformParameter;
+
+
 // 初始化对应的函数
 void init_dataModel();
 void init_object_struct(struct Object *tmp);
@@ -116,6 +124,7 @@ void deleteObject(const char *path);
 void downloadFile(const char *url, const char *fileType, const char *fileSize, const char *username, const char *password);
 void applyDownloadFile(const char *fileType);
 void uploadFile(const char *url, const char *fileType, const char *username, const char *password);
+InformParameter *getInformParameter();
 
 // 数据模型相关的函数
 int addObjectToDataModel(char *path, const unsigned char writable, const unsigned char limit, void (*function)());

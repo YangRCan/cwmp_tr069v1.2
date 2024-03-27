@@ -617,6 +617,7 @@ void uploadFile(const char *url, const char *fileType, const char *username, con
         Fault_Code = FAULT_9003;
         return;
     }
+    printf("正在上传，上传完成！\n");
 #if defined(__ANDROID__)
 
     FILE *fp;
@@ -712,6 +713,13 @@ void uploadFile(const char *url, const char *fileType, const char *username, con
 #endif // __ANDROID__
     Fault_Code = FAULT_0;
     exe_status = 1;//成功
+}
+
+/**
+ * 获取需要通知的参数
+*/
+InformParameter *getInformParameter(){
+
 }
 
 /**#################################

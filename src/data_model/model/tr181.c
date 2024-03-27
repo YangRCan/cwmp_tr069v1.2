@@ -71,6 +71,12 @@ void init_tr181_parameter()
     addParameterToDataModel(concatenateStrings(ROOT, ".ManagementServer.ConnectionRequestURL"), "", READONLY, Notification_Off, "string(:256)", NULL);
     addParameterToDataModel(concatenateStrings(ROOT, ".ManagementServer.ConnectionRequestUsername"), "", WRITABLE, Notification_Off, "string(:256)", NULL);
     addParameterToDataModel(concatenateStrings(ROOT, ".ManagementServer.ConnectionRequestPassword"), "", WRITABLE, Notification_Off, "string(:256)", NULL);
+    /*
+     ParameterKey 为 ACS 提供了一种可靠且可扩展的方法来跟踪 ACS 所做的更改。 ParameterKey 的值必须等于来自 ACS 最近成功的 SetParameterValues、AddObject 或
+     DeleteObject 方法调用的 ParameterKey 参数的值。 当且仅当方法 !!成功完成并且没有生成故障响应!! 时，CPE 必须将 ParameterKey 设置为相应方法参数中指定的值。
+     如果方法调用未成功完成（意味着方法中请求的更改未生效），则不得修改 ParameterKey 的值。 CPE 必须仅由于 SetParameterValues、AddObject、DeleteObject
+     或恢复出厂设置而修改 ParameterKey 的值。 恢复出厂设置时，ParameterKey 的值必须设置为 "空字符串"。
+    */
     addParameterToDataModel(concatenateStrings(ROOT, ".ManagementServer.ParameterKey"), "", READONLY, Active_Notification, "string(:32)", NULL);
 
     // DHCPv4

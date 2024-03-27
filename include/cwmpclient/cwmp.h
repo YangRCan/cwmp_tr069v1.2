@@ -35,9 +35,9 @@ enum EVENT_BACKUP_SAVE
 
 enum EVENT_REMOVE_POLICY
 {
-	EVENT_REMOVE_AFTER_INFORM = 0x1,
-	EVENT_REMOVE_AFTER_TRANSFER_COMPLETE = 0x2,
-	EVENT_REMOVE_NO_RETRY = 0x4
+	EVENT_REMOVE_AFTER_INFORM = 0x1,//通知后删除事件
+	EVENT_REMOVE_AFTER_TRANSFER_COMPLETE = 0x2,//传输完成后删除事件
+	EVENT_REMOVE_NO_RETRY = 0x4 //事件删除不重试
 };
 
 enum
@@ -143,9 +143,15 @@ private:
 	std::atomic<int> inform_num;//用于保证不重复上报，新建定期上报线程就得+1，值不大于100
 
 	void cwmp_periodic_inform(int inform_num_copy, long interval);
+	inline int cwmp_retry_count_interval(int retry_count);
+	inline void cwmp_retry_session(void);
+	inline int rpc_inform(void);
+	void cwmp_handle_end_session(void);
 public:
 	cwmpInfo();
 	~cwmpInfo();
+	int get_retry_count(void);
+	std::list<event *> get_event_list(void);
 	void set_get_rpc_methods(bool flag);
 	void set_deviceid(std::string manufacturer, std::string oui, std::string product_class, std::string serial_number);
 
@@ -158,6 +164,7 @@ public:
 
 
 	event *cwmp_add_event(int code, std::string key, int method_id, int backup);
+	void cwmp_remove_event(int remove_policy, int method_id);
 	void cwmp_add_download(std::string key, int delay, std::string file_size, std::string download_url, std::string file_type, std::string username, std::string password, tinyxml2::XMLElement *node);
 	void cwmp_download_launch(download *d, int delay);
 	void cwmp_add_upload(std::string key, int delay, std::string upload_url, std::string file_type, std::string username, std::string password, tinyxml2::XMLElement *node);

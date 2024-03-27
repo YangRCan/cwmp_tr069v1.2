@@ -19,7 +19,7 @@ char *get_time(void)
 	if (t_tm == NULL)
 		return NULL;
 
-	if (strftime(local_time, sizeof(local_time), "%Y-%m-%d %H:%M:%S", t_tm) == 0)
+	if (strftime(local_time, sizeof(local_time), "%Y-%m-%dT%H:%M:%S", t_tm) == 0)
 		return NULL;
 
 	local_time[25] = local_time[24];
