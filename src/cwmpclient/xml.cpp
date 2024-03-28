@@ -7,6 +7,7 @@
 #include "cwmp.h"
 #include "time_tool.h"
 #include "parameter.h"
+#include "xml.h"
 
 namespace tx = tinyxml2;
 
@@ -56,6 +57,38 @@ namespace {
     }
 
     /**
+     * 在xml树中查找是否有标签值为 value 的标签
+    */
+    tx::XMLElement* findElementBylabel(tx::XMLElement* element, const char* label) {
+        if (!element)
+            return nullptr;
+        if (strcmp(element->Value(), label) == 0)
+            return element;
+        for (tx::XMLElement* child = element->FirstChildElement(); child; child = child->NextSiblingElement()) {
+            tx::XMLElement* found = findElementBylabel(child, label);
+            if (found)
+                return found;
+        }
+        return nullptr;
+    }
+
+    /**
+     * 在xml树中查找是否有标签值为 value 的标签
+    */
+    tx::XMLElement* findElementByValue(tx::XMLElement* element, const char* value) {
+        if (!element)
+            return nullptr;
+        if (strcmp(element->GetText(), value) == 0)
+            return element;
+        for (tx::XMLElement* child = element->FirstChildElement(); child; child = child->NextSiblingElement()) {
+            tx::XMLElement* found = findElementByValue(child, value);
+            if (found)
+                return found;
+        }
+        return nullptr;
+    }
+
+    /**
      * 生成的XML可能是类似下面这样的结构（仅供参考，实际生成的XML结构会根据事件信息不同而有所差异）
     <Event>
         <EventStruct>
@@ -69,26 +102,28 @@ namespace {
         <!-- 更多事件结构 -->
     </Event>
     */
-    int xml_prepare_events_inform(tx::XMLElement *tree)
+    int xml_prepare_events_inform(tx::XMLDocument &doc)
     {
         tx::XMLElement *node, *b1, *b2;
+        tx::XMLElement *tree = doc.RootElement();
         int n = 0;
         // 获取Event标签
-        b1 = tree->FirstChildElement("cwmp:Inform")->FirstChildElement("Event");
+        b1 = findElementBylabel(tree, "Event");
         if (!b1) return -1;
         // 遍历事件列表
-        for(auto it = cwmp->get_event_list().begin(); it != cwmp->get_event_list().end(); it++) {
-            node = tx::XMLDocument::NewElement("EventStruct");
+        std::list<event*> events = cwmp->get_event_list();
+        for(auto it = events.begin(); it != events.end(); it++) {
+            node = doc.NewElement("EventStruct");
             if (!node) return -1;
 
-            b2 = tx::XMLDocument::NewElement("EventCode");
+            b2 = doc.NewElement("EventCode");
             if (!b2) return -1;
             b2->SetText(event_code_array[(*it)->code].code.c_str());
             node->InsertEndChild(b2);
 
-            b2 = tx::XMLDocument::NewElement("CommandKey");
+            b2 = doc.NewElement("CommandKey");
             if (!b2) return -1;
-            if ((*it)->key) {
+            if (!(*it)->key.empty()) {
                 b2->SetText((*it)->key.c_str());
             }
             node->InsertEndChild(b2);
@@ -105,56 +140,86 @@ namespace {
         return 0;
     }
 
-    int xml_get_rpc_methods(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out) {
+    /**
+     * 检索 notifications 链表，插入要上报的参数
+    */
+    int xml_prepare_notifications_inform(tx::XMLElement *parameter_list, int *counter, tx::XMLDocument &doc)
+    {
+        tx::XMLElement *b, *n;
+        std::list<notification *> notifications = cwmp->get_notifications();
 
+        for(auto it = notifications.begin(); it != notifications.end(); it++) {
+            b = findElementByValue(parameter_list, (*it)->parameter.c_str());
+            if (b) continue;//已存在要上报的参数
+            
+            n = doc.NewElement("ParameterValueStruct");
+            if (!n) return -1;
+            parameter_list->InsertEndChild(n);
+
+            b = doc.NewElement("Name");
+            if (!b) return -1;
+            b->SetText((*it)->parameter.c_str());
+
+            b = doc.NewElement("Value");
+            if (!b) return -1;
+            b->SetAttribute("xsi:type", (*it)->type.c_str());
+            b->SetText((*it)->value.c_str());
+
+            (*counter)++;
+        }
+        return 0;
+    }
+
+    int xml_get_rpc_methods(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out) {
+        return 0;
     }
 
     int xml_set_parameter_values(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out) {
-
+        return 0;
     }
 
     int xml_get_parameter_values(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out){
-        
+        return 0;
     }
 
     int xml_get_parameter_names(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out) {
-
+        return 0;
     }
 
     int xml_set_parameter_attributes(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out) {
-        
+        return 0;
     }
 
     int xml_download(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out) {
-
+        return 0;
     }
 
     int xml_upload(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out) {
-
+        return 0;
     }
 
     int xml_factory_reset(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out) {
-
+        return 0;
     }
 
     int xml_reboot(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out) {
-        
+        return 0;
     }
 
     int xml_get_parameter_attributes(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out) {
-
+        return 0;
     }
 
     int xml_schedule_inform(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out) {
-
+        return 0;
     }
 
     int xml_AddObject(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out) {
-
+        return 0;
     }
 
     int xml_DeleteObject(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out) {
-
+        return 0;
     }
 
     // 支持的RPC方法
@@ -188,6 +253,7 @@ int xml_prepare_inform_message(std::string &msg_out)
 	tx::XMLElement *tree, *b, *n, *parameter_list;
 	std::string c;
 	int counter = 0;
+    deviceInfo di = cwmp->get_device_info();
 
     doc.Parse(CWMP_INFORM_MESSAGE);
     tree = doc.RootElement();
@@ -195,72 +261,76 @@ int xml_prepare_inform_message(std::string &msg_out)
 
 	if(xml_add_cwmpid(tree)) return -1;
 
-    b = tree->FirstChildElement("cwmp:Inform")->FirstChildElement("RetryCount");
+    b = findElementBylabel(tree, "RetryCount");
 	if (!b) return -1;
 	b->SetText(cwmp->get_retry_count());
 
-    b = tree->FirstChildElement("cwmp:Inform")->FirstChildElement("DeviceId")->FirstChildElement("Manufacturer");
+    b = findElementBylabel(tree, "Manufacturer");
 	if (!b) return -1;
-    b->SetText(cwmp->deviceInfo.manufacturer.c_str());
+    b->SetText(di.manufacturer.c_str());
 
-    b = tree->FirstChildElement("cwmp:Inform")->FirstChildElement("DeviceId")->FirstChildElement("OUI");
+    b = findElementBylabel(tree, "OUI");
 	if (!b) return -1;
-    b->SetText(cwmp->deviceInfo.oui.c_str());
+    b->SetText(di.oui.c_str());
 
-    b = tree->FirstChildElement("cwmp:Inform")->FirstChildElement("DeviceId")->FirstChildElement("ProductClass");
+    b = findElementBylabel(tree, "ProductClass");
 	if (!b) return -1;
-    b->SetText(cwmp->deviceInfo.product_class.c_str());
+    b->SetText(di.product_class.c_str());
 
-    b = tree->FirstChildElement("cwmp:Inform")->FirstChildElement("DeviceId")->FirstChildElement("SerialNumber");
+    b = findElementBylabel(tree, "SerialNumber");
 	if (!b) return -1;
-    b->SetText(cwmp->deviceInfo.serial_number.c_str());
+    b->SetText(di.serial_number.c_str());
     
     // 修改Event子树内容
-	if (xml_prepare_events_inform(tree))
+	if (xml_prepare_events_inform(doc))
 		return -1;
 
-    b = tree->FirstChildElement("cwmp:Inform")->FirstChildElement("CurrentTime");
+    b = findElementBylabel(tree, "CurrentTime");
 	if (!b) return -1;
-	b = mxmlNewOpaque(b, mix_get_time());
     b->SetText(get_time());
 
     // 获取需要上报的参数
-    getInformParameter();
-	parameter_list = tree->FirstChildElement("cwmp:Inform")->FirstChildElement("ParameterList");
+    InformParameter **inform_parameter = NULL;
+    inform_parameter = getInformParameter();
+    parameter_list = findElementBylabel(tree, "ParameterList");
 	if (!parameter_list) return -1;
-	while (external_list_parameter.next != &external_list_parameter) {
-
-		n = mxmlNewElement(parameter_list, "ParameterValueStruct");
+    for (size_t i = 0; inform_parameter[i] != NULL; i++)
+    {
+        n = doc.NewElement("ParameterValueStruct");
 		if (!n) return -1;
-
-		b = mxmlNewElement(n, "Name");
+        parameter_list->InsertEndChild(n);
+        
+        b = doc.NewElement("Name");
 		if (!b) return -1;
+        b->SetText(inform_parameter[i]->name);
+        n->InsertEndChild(b);
 
-		b = mxmlNewOpaque(b, external_parameter->name);
+        b = doc.NewElement("Value");
 		if (!b) return -1;
-
-		b = mxmlNewElement(n, "Value");
-		if (!b) return -1;
-
-		mxmlElementSetAttr(b, "xsi:type", external_parameter->type);
-		b = mxmlNewOpaque(b, external_parameter->data ? external_parameter->data : "");
-		if (!b) return -1;
+        b->SetText(inform_parameter[i]->data ? inform_parameter[i]->data : "");
+        b->SetAttribute("xsi:type", inform_parameter[i]->type ? inform_parameter[i]->type : "string");
+        n->InsertEndChild(b);
 
 		counter++;
-	}
+        free(inform_parameter[i]->name);
+        free(inform_parameter[i]->type);
+        free(inform_parameter[i]->data);
+        free(inform_parameter[i]);
+    }
+    free(inform_parameter);
 
-	if (xml_prepare_notifications_inform(parameter_list, &counter))
+	if (xml_prepare_notifications_inform(parameter_list, &counter, doc))
 		return -1;
 
-	if (asprintf(&c, "cwmp:ParameterValueStruct[%d]", counter) == -1)
-		return -1;
+    c = "cwmp:ParameterValueStruct[" + std::to_string(counter) + "]";
 
-	mxmlElementSetAttr(parameter_list, "soap_enc:arrayType", c);
-	FREE(c);
+    parameter_list->SetAttribute("soap_enc:arrayType", c.c_str());
 
-	*msg_out = mxmlSaveAllocString(tree, xml_format_cb);
+    tx::XMLPrinter printer;
+    doc.Print(&printer);
+    msg_out.assign(printer.CStr());
+    std::cout << msg_out << std::endl;
 
-	mxmlDelete(tree);
 	return 0;
 }
 

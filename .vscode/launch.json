@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/cwmpclient.exe",
-            "args": [],
+            "args": ["-b"],
             "stopAtEntry": false,
             "cwd": "D:\\project\\cwmp_tr069v1.2\\build",
             "environment": [],

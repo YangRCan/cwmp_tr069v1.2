@@ -57,6 +57,8 @@ void config_load(void)
     if (config_init_acs())
         handle_error(); // 从配置文件中获取acs的相关选项配置，并且赋值到 config->acs 结构体中
 
+    cwmp->cwmp_init_deviceInfo(); // 读取设备信息到cwmp的deviceInfo成员中
+
     backup_check_acs_url(); // 检查是否已存在与 ACS URL 相关的节点，并检查其中的内容是否与配置中的 ACS URL 不一致
     // 检查是否已存在与 software_version 相关的节点，并检查其中的内容是否与配置中的 software_version 不一致, 若不一致，重构一个 "software_version" 的新节点，并更新配置文件中的值
     backup_check_software_version();

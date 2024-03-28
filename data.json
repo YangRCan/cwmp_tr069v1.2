@@ -88,7 +88,7 @@
 		},
 		"DeviceLog":	{
 			"parameterType":	"string",
-			"value":	"5",
+			"value":	"",
 			"writable":	"0",
 			"Notification":	"0",
 			"AccessList":	["Subscriber"]
@@ -104,14 +104,14 @@
 		},
 		"Username":	{
 			"parameterType":	"string(:256)",
-			"value":	"admin",
+			"value":	"yangrongcan",
 			"writable":	"1",
 			"Notification":	"0",
 			"AccessList":	["Subscriber"]
 		},
 		"Password":	{
 			"parameterType":	"string(:256)",
-			"value":	"admin",
+			"value":	"unionman",
 			"writable":	"1",
 			"Notification":	"0",
 			"AccessList":	["Subscriber"]
@@ -125,7 +125,7 @@
 		},
 		"PeriodicInformInterval":	{
 			"parameterType":	"unsignedInt(1:)",
-			"value":	"3",
+			"value":	"300",
 			"writable":	"1",
 			"Notification":	"0",
 			"AccessList":	["Subscriber"]

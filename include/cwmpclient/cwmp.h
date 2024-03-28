@@ -7,6 +7,7 @@
 #include <list>
 #include <string>
 #include <atomic>
+#include <mutex>
 
 #include "tinyxml2.h"
 
@@ -139,7 +140,9 @@ private:
 	bool get_rpc_methods;
 	bool hold_requests;
 	int netlink_sock[2];
-	bool retry_inform;
+	std::atomic<bool> retry_inform;
+	std::mutex inform_mtx;//给判断和修改isInfroming变量时上锁
+	std::atomic<bool> isInfroming;//当前是否正在上报，同一时刻不能同时有多个上报线程
 	std::atomic<int> inform_num;//用于保证不重复上报，新建定期上报线程就得+1，值不大于100
 
 	void cwmp_periodic_inform(int inform_num_copy, long interval);
@@ -152,11 +155,13 @@ public:
 	~cwmpInfo();
 	int get_retry_count(void);
 	std::list<event *> get_event_list(void);
+	struct deviceInfo get_device_info(void);
+	std::list<notification *> get_notifications(void);
 	void set_get_rpc_methods(bool flag);
 	void set_deviceid(std::string manufacturer, std::string oui, std::string product_class, std::string serial_number);
 
 
-	void cwmp_init_deviceid(void);
+	void cwmp_init_deviceInfo(void);
 
 	void cwmp_clean(void);
 	void cwmp_clear_event_list(void);
@@ -170,8 +175,8 @@ public:
 	void cwmp_add_upload(std::string key, int delay, std::string upload_url, std::string file_type, std::string username, std::string password, tinyxml2::XMLElement *node);
 	void cwmp_upload_launch(upload *ul, int delay);
 
-	void cwmp_add_inform_timer(void);
-	void cwmp_do_inform(void);
+	void cwmp_add_inform_timer(int64_t interval);
+	void cwmp_do_inform(int64_t interval);
 	void cwmp_do_inform_retry(int delaySeconds);
 	void cwmp_periodic_inform_init(void);
 

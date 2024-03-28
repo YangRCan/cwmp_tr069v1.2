@@ -31,7 +31,7 @@ static const char *delimiter = "."; // 路径分隔符
 char *download_dir;
 
 static int exe_status = 0;
-static int Fault_Code = FAULT_0;
+int Fault_Code = FAULT_0;
 
 /**######################
 ##                     ##
@@ -159,10 +159,11 @@ void setParameter(const char *path, const char *value, int verify)
     {
         cJSON_SetValuestring(cJSON_GetObjectItemCaseSensitive(node, "value"), value);
         save_data();
-        printf("Successfully modified\n");
         Fault_Code = FAULT_0;
         exe_status = 1;
-    } else {
+    }
+    else
+    {
         Fault_Code = FAULT_9003;
     }
     freePath(PATH, count);
@@ -204,7 +205,9 @@ void getParameter(const char *path, char **str)
         *str = node->valuestring;
         Fault_Code = FAULT_0;
         exe_status = 1;
-    } else {
+    }
+    else
+    {
         printErrorInfo(FAULT_9005);
         Fault_Code = FAULT_9005;
     }
@@ -449,9 +452,12 @@ void addObject(const char *path, char **instanceNumber)
         Fault_Code = FAULT_9005;
         return;
     }
-    if(addObjectToData(instanceNumber) > 0) {
+    if (addObjectToData(instanceNumber) > 0)
+    {
         exe_status = 0;
-    } else {
+    }
+    else
+    {
         Fault_Code = FAULT_0;
         exe_status = 1;
     }
@@ -591,25 +597,27 @@ void downloadFile(const char *url, const char *fileType, const char *fileSize, c
 void applyDownloadFile(const char *fileType)
 {
     printf("正在安装文件");
-    if(strcmp(fileType, "1 Firmware Upgrade Image")) {
+    if (strcmp(fileType, "1 Firmware Upgrade Image"))
+    {
 #if defined(__ANDROID__)
-    printf("Applying update.zip...\n");
-    // 执行写入命令到/cache/recovery/command的操作
-    char *buffer[100];
-    sprintf(buffer, "echo --update_package=%s/update.zip > /cache/recovery/command", download_dir);
-    system("echo --update_package=/cache/update/update.zip > /cache/recovery/command");
-    // 同步文件系统
-    system("sync");
-    // 重启到recovery模式
-    system("reboot recovery");
+        printf("Applying update.zip...\n");
+        // 执行写入命令到/cache/recovery/command的操作
+        char *buffer[100];
+        sprintf(buffer, "echo --update_package=%s/update.zip > /cache/recovery/command", download_dir);
+        system("echo --update_package=/cache/update/update.zip > /cache/recovery/command");
+        // 同步文件系统
+        system("sync");
+        // 重启到recovery模式
+        system("reboot recovery");
 #endif // __ANDROID__
     }
 }
 
 /**
  * 文件上传函数
-*/
-void uploadFile(const char *url, const char *fileType, const char *username, const char *password) {
+ */
+void uploadFile(const char *url, const char *fileType, const char *username, const char *password)
+{
     // 检查参数
     if (url == NULL || fileType == NULL)
     {
@@ -621,39 +629,48 @@ void uploadFile(const char *url, const char *fileType, const char *username, con
 #if defined(__ANDROID__)
 
     FILE *fp;
-    char *serial = (char*)malloc(32 * sizeof(char));
+    char *serial = (char *)malloc(32 * sizeof(char));
     // getprop | grep ro.serialno
     fp = popen("getprop ro.serialno", "r");
-    if (fp == NULL) {
+    if (fp == NULL)
+    {
         printf("Error: Failed to execute getprop command\n");
         Fault_Code = FAULT_9002;
         return;
     }
-    if (fgets(serial, 32, fp) != NULL) {
+    if (fgets(serial, 32, fp) != NULL)
+    {
         // 移除末尾的换行符
         serial[strcspn(serial, "\n")] = '\0';
-    } else {
+    }
+    else
+    {
         printf("Error: Failed to read serial number\n");
         Fault_Code = FAULT_9002;
         return;
     }
     pclose(fp);
-    if (strlen(serial) == 0) {//如果序列号不存在
-        strcpy(serial, "XUNION123456");//默认序列号
+    if (strlen(serial) == 0)
+    {                                   // 如果序列号不存在
+        strcpy(serial, "XUNION123456"); // 默认序列号
     }
     printf("Serial number: %s\n", serial);
     char up_url[255];
     // 处理URL
-    if (username && username[0] != '\0' || password && password[0] != '\0') {
+    if (username && username[0] != '\0' || password && password[0] != '\0')
+    {
         snprintf(up_url, 48, "%s://%s:%s@", url, username, password);
         printf("%s\n", up_url);
     }
-    //上传日日志
-    if(strcmp(fileType, "Vendor Log File") == 0) {
+    // 上传日日志
+    if (strcmp(fileType, "Vendor Log File") == 0)
+    {
         char save_dir[] = "/cache/cwmp";
-        if (access(save_dir, F_OK) == -1) {
+        if (access(save_dir, F_OK) == -1)
+        {
             // 目录不存在，创建它
-            if (mkdir(save_dir, 0777) == -1) {
+            if (mkdir(save_dir, 0777) == -1)
+            {
                 printf("Error creating directory %s\n", save_dir);
                 Fault_Code = FAULT_9002;
                 return;
@@ -663,21 +680,24 @@ void uploadFile(const char *url, const char *fileType, const char *username, con
         sprintf(file_path, "%s/log(%s).txt", save_dir, serial);
         // 执行 logcat 命令并获取输出
         FILE *fp = popen("logcat -d", "r");
-        if (fp == NULL) {
+        if (fp == NULL)
+        {
             printf("Error executing logcat command\n");
             Fault_Code = FAULT_9002;
             return;
         }
         // 创建文件并写入logcat输出
         FILE *outputFile = fopen(file_path, "w");
-        if (outputFile == NULL) {
+        if (outputFile == NULL)
+        {
             printf("Error creating output file\n");
             pclose(fp);
             Fault_Code = FAULT_9002;
             return;
         }
         char buffer[4096];
-        while (fgets(buffer, sizeof(buffer), fp) != NULL) {
+        while (fgets(buffer, sizeof(buffer), fp) != NULL)
+        {
             fputs(buffer, outputFile);
         }
         // 关闭文件和流
@@ -685,41 +705,48 @@ void uploadFile(const char *url, const char *fileType, const char *username, con
         pclose(fp);
         printf("Logcat saved to: %s\n", file_path);
 
-        //将文件上传
+        // 将文件上传
         CURL *curl;
         CURLcode res;
-        //初始化
+        // 初始化
         curl = curl_easy_init();
-        if(curl) {
+        if (curl)
+        {
             curl_easy_setopt(curl, CURLOPT_URL, url);
             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, file_path);
-            if (username && username[0] != '\0' && password && password[0] != '\0') {
+            if (username && username[0] != '\0' && password && password[0] != '\0')
+            {
                 char *un_pw[100];
                 snprintf(un_pw, 100, "%s:%s", username, password);
                 curl_easy_setopt(curl, CURLOPT_USERPWD, un_pw);
             }
             res = curl_easy_perform(curl);
-            if (res != CURLE_OK) {
+            if (res != CURLE_OK)
+            {
                 fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
                 Fault_Code = FAULT_9011;
             }
             curl_easy_cleanup(curl);
         }
-    } else if(strcmp(fileType, "Vendor Configuration File")) {
-
+    }
+    else if (strcmp(fileType, "Vendor Configuration File"))
+    {
     }
     free(serial);
 
 #endif // __ANDROID__
     Fault_Code = FAULT_0;
-    exe_status = 1;//成功
+    exe_status = 1; // 成功
 }
 
 /**
  * 获取需要通知的参数
-*/
-InformParameter *getInformParameter(){
-
+ */
+InformParameter **getInformParameter()
+{
+    InformParameter **info_param = NULL;
+    info_param = getInfoParamFromJson("Device.");
+    return info_param;
 }
 
 /**#################################
@@ -946,7 +973,8 @@ struct Object *checkObjectPath()
 struct Object *ObjectCanInstantiate()
 {
     struct Object *obj = checkObjectPath(); // 检查路径是否正确并且获取该路径的最后一个Object对象
-    if (!obj) {
+    if (!obj)
+    {
         Fault_Code = FAULT_9003;
         return NULL;
     }
@@ -969,7 +997,8 @@ int checkParameterPath()
 {
     count--;
     struct Object *obj = checkObjectPath(); // 正确则会返回路径的最后一个Object对象
-    if (!obj) {
+    if (!obj)
+    {
         Fault_Code = FAULT_9005;
         return FAULT_9005;
     }
@@ -981,11 +1010,13 @@ int checkParameterPath()
     {
         if (strcmp(obj->child_parameter[i].name, PATH[count - 1]) == 0)
         {
-            if (obj->child_parameter[i].writable == WRITABLE) {
+            if (obj->child_parameter[i].writable == WRITABLE)
+            {
                 Fault_Code = FAULT_0;
                 return FAULT_0;
             }
-            else {
+            else
+            {
                 Fault_Code = FAULT_9008;
                 return -1; // 不可set修改值
             }
@@ -1002,19 +1033,22 @@ int checkParameterPath()
 int addObjectToData(char **instanceNumber)
 {
     struct Object *obj = checkObjectPath();
-    if (!obj) {
+    if (!obj)
+    {
         Fault_Code = FAULT_9005;
         return FAULT_9005;
     }
 
     obj = ObjectCanInstantiate(); // 可以实例化则会返回其下一级占位符{i}
-    if (!obj) {
+    if (!obj)
+    {
         Fault_Code = FAULT_9005;
         return FAULT_9005;
     }
     // 在JSON中创建该实例
     *instanceNumber = createObjectToJsonData(obj);
-    if(*instanceNumber == NULL) return FAULT_9003;
+    if (*instanceNumber == NULL)
+        return FAULT_9003;
     return FAULT_0;
 }
 
@@ -1358,7 +1392,7 @@ int GetPlaceholderMaxNum(cJSON *node)
 }
 
 /**
- * 获取 Parameter/路径 在JSON文件中对应的cJSON对象(最后一个cJOSN)
+ * 获取 Parameter 路径 在JSON文件中对应的cJSON对象(最后一个cJOSN)
  */
 cJSON *getParameterJSON()
 {
@@ -1506,6 +1540,7 @@ ParameterAttributeStruct **getAttributesFromJson(const char *parameter)
             break;
         index++;
     }
+    freePath(pathList, count);
 
     if (!node)
     {
@@ -1568,8 +1603,79 @@ ParameterAttributeStruct **getAttributesFromJson(const char *parameter)
         }
         return paramAttributes;
     }
+}
 
+/**
+ * 从JSON文件中获取上报参数，返回InformParameter指针数组
+*/
+InformParameter **getInfoParamFromJson(const char *parameter)
+{
+    int length = strlen(parameter), count = 0, index = 1;
+    char **pathList = getSubStrings(parameter, &count);
+
+    cJSON *node = rootJSON;
+    while (index < count)
+    {
+        node = cJSON_GetObjectItemCaseSensitive(node, pathList[index]);
+        if (!node)
+            break;
+        index++;
+    }
     freePath(pathList, count);
+
+    if (!node)
+    {
+        printErrorInfo(FAULT_9005);
+        Fault_Code = FAULT_9005;
+        return NULL;
+    }
+
+    if (cJSON_GetObjectItemCaseSensitive(node, "parameterType"))
+    {
+        int n = atoi(cJSON_GetObjectItemCaseSensitive(node, "Notification")->valuestring);
+        if(n == 0) return NULL;
+        // 是参数，直接封装返回
+        InformParameter **info_param = (InformParameter **)calloc(2, sizeof(InformParameter *));
+        info_param[0] = (InformParameter *)malloc(sizeof(InformParameter));
+
+        info_param[0]->name = strdup(parameter); // 记得释放
+        info_param[0]->type = strdup(cJSON_GetObjectItemCaseSensitive(node, "parameterType")->valuestring);
+        info_param[0]->data = strdup(cJSON_GetObjectItemCaseSensitive(node, "value")->valuestring);
+        info_param[1] = NULL; // 数组结束标志
+
+        return info_param;
+    }
+    else
+    {
+        // 循环递归找参数
+        InformParameter **info_param = (InformParameter **)malloc(sizeof(InformParameter *));
+        int length = 0;
+        info_param[0] = NULL;
+        cJSON *child = node->child;
+        while (child)
+        {
+            char *newPath = (char *)malloc(strlen(parameter) + strlen(child->string) + 2);
+            strcpy(newPath, parameter);
+            strcat(newPath, child->string);
+            if (!cJSON_GetObjectItemCaseSensitive(child, "parameterType"))
+                strcat(newPath, ".");
+
+            InformParameter **info = getInfoParamFromJson(newPath);
+            int len = 0;
+            while (info && info[len])
+                len++;
+            info_param = (InformParameter **)realloc(info_param, (length + len + 1) * sizeof(InformParameter *));
+            for (size_t i = 0; i < len; i++)
+            {
+                info_param[length + i] = info[i];
+            }
+            info_param[length + len] = NULL;
+            free(info);
+            length += len;
+            child = child->next;
+        }
+        return info_param;
+    }
 }
 
 /**
@@ -1772,6 +1878,6 @@ void getExecutionStatus(int *status, int *fault)
 {
     *fault = Fault_Code;
     *status = exe_status;
-    Fault_Code = FAULT_0;//默认无错
-    exe_status = 0;//默认不成功
+    Fault_Code = FAULT_0; // 默认无错
+    exe_status = 0;       // 默认不成功
 }

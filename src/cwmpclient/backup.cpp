@@ -126,7 +126,7 @@ void backup_load_event(void)
                     {
                         e->backup_node = elem;
                     }
-                    cwmp->cwmp_add_inform_timer();
+                    cwmp->cwmp_add_inform_timer(1000);
                 }
             }
         }
@@ -405,7 +405,7 @@ void backup_check_software_version(void)
     {
         Log(NAME, L_DEBUG, "Failed to save backup.xml file.");
     }
-    cwmp->cwmp_add_inform_timer();
+    cwmp->cwmp_add_inform_timer(1000);
 }
 
 /**
@@ -462,8 +462,8 @@ void backup_add_acsurl(const char *acs_url)
         Log(NAME, L_DEBUG, "Failed to save backup.xml file.");
     }
 
-    cwmp->cwmp_add_event(EVENT_BOOTSTRAP, "", 0, EVENT_BACKUP);
-    cwmp->cwmp_add_inform_timer();
+    cwmp->cwmp_add_event(EVENT_BOOTSTRAP, "", 0, EVENT_BACKUP);//添加开机启动事件
+    cwmp->cwmp_add_inform_timer(1000);
 }
 
 /**

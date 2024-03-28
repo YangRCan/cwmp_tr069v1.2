@@ -5,6 +5,7 @@
 #define _CWMP_HTTP_
 
 #include <curl/curl.h>
+#include <string>
 
 static const char *fc_cookies = "./backup/easycwmp_cookies";
 struct http_client
@@ -14,7 +15,8 @@ struct http_client
 };
 
 int http_client_init(void);
-void http_client_exit(void);
 static size_t http_get_response(char *buffer, size_t size, size_t rxed, char **msg_in);
+int8_t http_send_message(std::string msg_out, std::string &msg_in);
+void http_client_exit(void);
 
 #endif // _CWMP_HTTP_

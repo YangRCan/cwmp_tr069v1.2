@@ -15,7 +15,8 @@ Operate operates[] = {
     {"add", addObject},
     {"delete", deleteObject},
     {"download", downloadFile},
-    {"upload", uploadFile}};
+    {"upload", uploadFile},
+    {"inform", NULL}};
 
 /**
  * 数据初始化
@@ -88,7 +89,7 @@ int main(int argc, char *argv[])
 {
     init();
 
-    if (argc > 2)
+    if (argc >= 2)
     {
         char *operate = argv[1];
         size_t i = 0;
@@ -133,6 +134,7 @@ int main(int argc, char *argv[])
                 else if (argc == 4 && strcmp(operate, "set") == 0)
                 {
                     operates[i].function(argv[2], argv[3], MUSTVERIFY);
+                    if(Fault_Code == 0) printf("Successfully modified\n");
                     break;
                 }
                 else if (argc == 3 && strcmp(operate, "add") == 0)
@@ -158,6 +160,26 @@ int main(int argc, char *argv[])
                         operates[i].function(argv[2], argv[3], NULL, NULL);
                     else
                         operates[i].function(argv[2], argv[3], argv[4], argv[5]);
+                    break;
+                }
+                else if (argc >= 2 && strcmp(operate, "inform") == 0)
+                {
+                    InformParameter **inform_parameter = NULL;
+                    if (argc == 2 || strcmp(argv[2], "parameter") == 0)
+                        inform_parameter = getInformParameter();
+                    else if (argc > 2 && strcmp(argv[2], "device_id"))
+                        inform_parameter;
+                    if(!inform_parameter) break;
+                    for (size_t i = 0; inform_parameter[i] != NULL ; i++)
+                    {
+                        printf("{ \" parameter \" : \" %s \"}, { \" value \" : \" %s \"}, { \" type \" : \" %s \"}\n", inform_parameter[i]->name, inform_parameter[i]->data, inform_parameter[i]->type);
+                        free(inform_parameter[i]->name);
+                        free(inform_parameter[i]->type);
+                        free(inform_parameter[i]->data);
+                        free(inform_parameter[i]);
+                    }
+                    free(inform_parameter);
+                    break;
                 }
                 else
                 {

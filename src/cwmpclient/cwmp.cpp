@@ -17,6 +17,7 @@
 #include "faultCode.h"
 #include "tr181.h"
 #include "tinyxml2.h"
+#include "xml.h"
 
 namespace tx = tinyxml2;
 
@@ -49,6 +50,7 @@ cwmpInfo::cwmpInfo()
 	this->netlink_sock[0] = 0;
 	this->netlink_sock[1] = 0;
 	this->retry_inform = false;
+	this->isInfroming = false;
 	this->inform_num = 0;
 }
 
@@ -59,16 +61,34 @@ cwmpInfo::~cwmpInfo()
 
 /**
  * 返回成员 retry_count
-*/
-int cwmpInfo::get_retry_count(void) {
+ */
+int cwmpInfo::get_retry_count(void)
+{
 	return this->retry_count;
 }
 
 /**
  * 返回成员 events
-*/
-std::list<event *> cwmpInfo::get_event_list(void) {
+ */
+std::list<event *> cwmpInfo::get_event_list(void)
+{
 	return this->events;
+}
+
+/**
+ * 返回成员 notifications
+ */
+std::list<notification *> cwmpInfo::get_notifications(void)
+{
+	return this->notifications;
+}
+
+/**
+ * 返回成员 deviceInfo
+ */
+deviceInfo cwmpInfo::get_device_info(void)
+{
+	return this->deviceInfo;
 }
 
 /**
@@ -93,7 +113,7 @@ void cwmpInfo::set_deviceid(std::string manufacturer, std::string oui, std::stri
 /**
  * 从配置文件读取设备信息到cwmp的deviceInfo成员中
  */
-void cwmpInfo::cwmp_init_deviceid(void)
+void cwmpInfo::cwmp_init_deviceInfo(void)
 {
 	read_config_to_cwmp_deviceid();
 
@@ -193,11 +213,11 @@ event *cwmpInfo::cwmp_add_event(int code, std::string key, int method_id, int ba
 
 /**
  * 移除符合特定条件(参数)的事件节点
-*/
-void cwmpInfo::cwmp_remove_event(int remove_policy, int method_id) {
-	this->events.remove_if([remove_policy, method_id](event *e) {
-		return (event_code_array[e->code].remove_policy & remove_policy) && e->method_id == method_id;
-	});
+ */
+void cwmpInfo::cwmp_remove_event(int remove_policy, int method_id)
+{
+	this->events.remove_if([remove_policy, method_id](event *e)
+						   { return (event_code_array[e->code].remove_policy & remove_policy) && e->method_id == method_id; });
 }
 
 /**
@@ -261,7 +281,7 @@ void cwmpInfo::cwmp_download_launch(download *d, int delay)
 		code = fault;
 		Log(NAME, L_NOTICE, "download error: '%s'\n", fault_array[code].string);
 		backup_update_fault_transfer_complete(node, code);
-		this->cwmp_add_inform_timer();
+		this->cwmp_add_inform_timer(10);
 		return;
 	}
 	else if (status != 1)
@@ -269,7 +289,7 @@ void cwmpInfo::cwmp_download_launch(download *d, int delay)
 		code = FAULT_9002;
 		Log(NAME, L_NOTICE, "download error: '%s'\n", fault_array[code].string);
 		backup_update_fault_transfer_complete(node, code);
-		this->cwmp_add_inform_timer();
+		this->cwmp_add_inform_timer(10);
 		return;
 	}
 	applyDownloadFile(d->file_type.c_str());
@@ -279,11 +299,11 @@ void cwmpInfo::cwmp_download_launch(download *d, int delay)
 		code = fault;
 		Log(NAME, L_NOTICE, "download error: '%s'\n", fault_array[code].string);
 		backup_update_fault_transfer_complete(node, code);
-		this->cwmp_add_inform_timer();
+		this->cwmp_add_inform_timer(10);
 		return;
 	}
 	backup_update_complete_time_transfer_complete(node);
-	this->cwmp_add_inform_timer();
+	this->cwmp_add_inform_timer(10);
 }
 
 /**
@@ -344,7 +364,7 @@ void cwmpInfo::cwmp_upload_launch(upload *ul, int delay)
 		code = fault;
 		Log(NAME, L_NOTICE, "upload error: '%s'\n", fault_array[code].string);
 		backup_update_fault_transfer_complete(node, code);
-		this->cwmp_add_inform_timer();
+		this->cwmp_add_inform_timer(10);
 		return;
 	}
 	else if (status != 1)
@@ -352,64 +372,86 @@ void cwmpInfo::cwmp_upload_launch(upload *ul, int delay)
 		code = FAULT_9002;
 		Log(NAME, L_NOTICE, "upload error: '%s'\n", fault_array[code].string);
 		backup_update_fault_transfer_complete(node, code);
-		this->cwmp_add_inform_timer();
+		this->cwmp_add_inform_timer(10);
 		return;
 	}
 	backup_update_complete_time_transfer_complete(node);
-	this->cwmp_add_inform_timer();
+	this->cwmp_add_inform_timer(10);
 }
 
 /**
  * 设置一个 Inform 定时器，每隔 5 毫秒触发一次
  */
-void cwmpInfo::cwmp_add_inform_timer(void)
+void cwmpInfo::cwmp_add_inform_timer(int64_t interval)
 {
-	std::thread timerThread(&cwmpInfo::cwmp_do_inform, this);
+	std::thread timerThread(&cwmpInfo::cwmp_do_inform, this, interval);
 	timerThread.detach(); // 将线程分离，使得线程可以自主运行
 }
 
 /**
- * 延迟5毫秒执行Inform
+ * 延迟interval毫秒执行Inform
  */
-void cwmpInfo::cwmp_do_inform(void)
+void cwmpInfo::cwmp_do_inform(int64_t interval)
 {
+	if (!this->inform_mtx.try_lock()) {
+        // 获取锁失败，执行退出逻辑
+		Log(NAME, L_NOTICE, "Failed to acquire lock. Exiting thread.\n");
+        return;
+    }
 	// 等待5毫秒
-	std::this_thread::sleep_for(std::chrono::milliseconds(5));
+	std::this_thread::sleep_for(std::chrono::milliseconds(interval));
 	this->retry_inform = false;
 	cwmp_inform(); // 到点执行该函数
+	this->inform_mtx.unlock();
 }
 
 /**
  * 重新启动会话需要等待的时间
-*/
+ */
 inline int cwmpInfo::cwmp_retry_count_interval(int retry_count)
 {
-	switch (retry_count) {
-		case 0 : return 0;
-		case 1 : return 7;
-		case 2 : return 15;
-		case 3 : return 30;
-		case 4 : return 60;
-		case 5 : return 120;
-		case 6 : return 240;
-		case 7 : return 480;
-		case 8 : return 960;
-		case 9 : return 1920;
-		default : return 3840;
+	switch (retry_count)
+	{
+	case 0:
+		return 0;
+	case 1:
+		return 7;
+	case 2:
+		return 15;
+	case 3:
+		return 30;
+	case 4:
+		return 60;
+	case 5:
+		return 120;
+	case 6:
+		return 240;
+	case 7:
+		return 480;
+	case 8:
+		return 960;
+	case 9:
+		return 1920;
+	default:
+		return 3840;
 	}
 }
 
 /**
  * 重新尝试开启会话
-*/
-inline void cwmpInfo::cwmp_retry_session(void) {
+ */
+inline void cwmpInfo::cwmp_retry_session(void)
+{
 	int rp, retry = 1;
 	for (auto it = this->events.begin(); it != this->events.end(); ++it)
 	{
 		rp = event_code_array[(*it)->code].remove_policy;
-		if((rp & EVENT_REMOVE_NO_RETRY)) {
+		if ((rp & EVENT_REMOVE_NO_RETRY))
+		{
 			retry = 0;
-		} else {
+		}
+		else
+		{
 			retry = 1;
 			break;
 		}
@@ -421,7 +463,7 @@ inline void cwmpInfo::cwmp_retry_session(void) {
 	int rtime = this->cwmp_retry_count_interval(this->retry_count);
 	Log(NAME, L_NOTICE, "retry session in %d sec, RetryCount = %d\n", rtime, this->retry_count);
 	std::thread inform_retry(&cwmpInfo::cwmp_do_inform_retry, this, rtime);
-	timerThread.detach();
+	inform_retry.detach();
 }
 
 /**
@@ -429,22 +471,25 @@ inline void cwmpInfo::cwmp_retry_session(void) {
  */
 void cwmpInfo::cwmp_do_inform_retry(int delaySeconds)
 {
-	this->retry_inform = true;//在对象中标明正在尝试重启会话
+	this->retry_inform = true; // 在对象中标明正在尝试重启会话
 	// 等待指定秒数
 	std::this_thread::sleep_for(std::chrono::seconds(delaySeconds));
-	if(this->retry_inform) return;//如果重试标志被取消了，则不重启会话
+	if (this->retry_inform)
+		return; // 如果重试标志被取消了，则不重启会话
 	this->retry_inform = false;
 	cwmp_inform();
 }
 
 /**
  * 它用于发送 Inform 消息，并在接收到响应后解析消息内容
-*/
-inline int cwmpInfo::rpc_inform(void) {
-	std::string msg_in, msg_out;//用于存储输入和输出的消息内容
-	int error = 0, count = 0;//用于计数循环次数
+ */
+inline int cwmpInfo::rpc_inform(void)
+{
+	std::string msg_in, msg_out; // 用于存储输入和输出的消息内容
+	int error = 0, count = 0;	 // 用于计数循环次数
 
-	if (xml_prepare_inform_message(&msg_out)) {//准备发送 Inform 消息，将消息存储在 msg_out 中。如果准备消息失败，则记录日志并返回 -1
+	if (xml_prepare_inform_message(msg_out))
+	{ // 准备发送 Inform 消息，将消息存储在 msg_out 中。如果准备消息失败，则记录日志并返回 -1
 		Log(NAME, L_DEBUG, "Inform xml message creating failed\n");
 		return -1;
 	}
@@ -452,27 +497,24 @@ inline int cwmpInfo::rpc_inform(void) {
 	Log(NAME, L_NOTICE, "send Inform\n");
 
 	do {
-		FREE(msg_in);
 		// 发送 Inform 消息并接收响应
-		if (http_send_message(msg_out, &msg_in)) {//返回结果存在msg_in中
+		if (http_send_message(msg_out, msg_in)) {//返回结果存在msg_in中(msg_in是一个引用参数)
 			Log(NAME, L_DEBUG, "sending Inform http message failed\n");
 			error = -1; break;
 		}
 		// 如果接收到空消息，则记录日志并设置错误标记
-		if (!msg_in) {
+		if (msg_in.empty()) {
 			Log(NAME, L_DEBUG, "parse Inform xml message from ACS: Empty message\n");
 			error = -1; break;
 		}
 		// 解析响应消息，解析ACS的返回消息(xml格式)，返回成功0、错误码8005、解析错误-1
-		error = xml_parse_inform_response_message(msg_in);
-		if (error && (error != FAULT_ACS_8005)) {// 如果解析失败且错误码不是 FAULT_ACS_8005，则记录日志并设置错误标记
-			Log(NAME, L_DEBUG, "parse Inform xml message from ACS failed\n");
-			error = -1; break;
-		}
+		// error = xml_parse_inform_response_message(msg_in);
+		// if (error && (error != FAULT_ACS_8005)) {// 如果解析失败且错误码不是 FAULT_ACS_8005，则记录日志并设置错误标记
+		// 	Log(NAME, L_DEBUG, "parse Inform xml message from ACS failed\n");
+		// 	error = -1; break;
+		// }
 	} while(error && (count++)<10);//error=0表示成功，退出循环，当错误码存在且循环次数不超过10次时，重试发送和解析消息的过程
 	//释放消息的内存，并返回错误码
-	FREE(msg_out);
-	FREE(msg_in);
 	return error;
 }
 
@@ -504,11 +546,11 @@ void cwmpInfo::cwmp_periodic_inform_init(void)
  */
 int cwmpInfo::cwmp_inform(void)
 {
-	std::cout << "到点上报" << std::endl;
+	// std::cout << "到点上报" << std::endl;
 	tx::XMLElement *node;
 	int method_id;
 
-	auto handle_error = [this](const string &message)
+	auto handle_error = [this](const std::string &message)
 	{
 		Log(NAME, L_DEBUG, message.c_str());
 		http_client_exit();
@@ -517,7 +559,7 @@ int cwmpInfo::cwmp_inform(void)
 		Log(NAME, L_NOTICE, "end session failed\n");
 		this->cwmp_retry_session();
 		return -1;
-	}
+	};
 
 	Log(NAME, L_NOTICE, "start session\n");
 	if (http_client_init()) // 返回 1 表示初始化失败
@@ -530,50 +572,50 @@ int cwmpInfo::cwmp_inform(void)
 	}
 	Log(NAME, L_NOTICE, "receive InformResponse from the ACS\n");
 
-	this->cwmp_remove_event(EVENT_REMOVE_AFTER_INFORM, 0); // 移除符合特定条件(参数)的事件节点
-	this->cwmp_clear_notifications();					   // 清空cwmp->notifications链表
+	// this->cwmp_remove_event(EVENT_REMOVE_AFTER_INFORM, 0); // 移除符合特定条件(参数)的事件节点
+	// this->cwmp_clear_notifications();					   // 清空cwmp->notifications链表
 
-	do
-	{
-		// 循环发送http完成请求给ACS，直到拿到响应，或出错
-		// backup_check_transfer_complete: 在 backup_tree 中查找名为 "transfer_complete" 的节点, 并返回
-		while ((node = backup_check_transfer_complete()) && !this->hold_requests)
-		{													   // 在rpc_inform（）中的解析响应数据时获取了cwmp->hold_requests的值
-			if (this->rpc_transfer_complete(node, &method_id)) // 发送传输完成http给ACS，并查看响应是否有出错
-			{
-				return handle_error("sending TransferComplete failed\n");
-			}
-			Log(NAME, L_NOTICE, "receive TransferCompleteResponse from the ACS\n");
+	// do
+	// {
+	// 	// 循环发送http完成请求给ACS，直到拿到响应，或出错
+	// 	// backup_check_transfer_complete: 在 backup_tree 中查找名为 "transfer_complete" 的节点, 并返回
+	// 	while ((node = backup_check_transfer_complete()) && !this->hold_requests)
+	// 	{													   // 在rpc_inform（）中的解析响应数据时获取了cwmp->hold_requests的值
+	// 		if (this->rpc_transfer_complete(node, &method_id)) // 发送传输完成http给ACS，并查看响应是否有出错
+	// 		{
+	// 			return handle_error("sending TransferComplete failed\n");
+	// 		}
+	// 		Log(NAME, L_NOTICE, "receive TransferCompleteResponse from the ACS\n");
 
-			backup_remove_transfer_complete(node);									  // 释放传入节点的内存空间
-			this->cwmp_remove_event(EVENT_REMOVE_AFTER_TRANSFER_COMPLETE, method_id); // 移除符合特定条件(参数)的事件节点
-			if (!backup_check_transfer_complete())									  // 找不到名为 "transfer_complete" 的节点, 进入
-				this->cwmp_remove_event(EVENT_REMOVE_AFTER_TRANSFER_COMPLETE, 0);	  // 移除符合特定条件(参数)的事件节点
-		}
-		// 如果要获取RPC方法，且现在还未拿到ACS的响应
-		if (this->get_rpc_methods && !this->hold_requests)
-		{
-			if (this->rpc_get_rpc_methods()) // 发送getRPCMethods请求
-			{
-				return handle_error("sending GetRPCMethods failed\n");
-			}
-			Log(NAME, L_NOTICE, "receive GetRPCMethodsResponse from the ACS\n");
+	// 		backup_remove_transfer_complete(node);									  // 释放传入节点的内存空间
+	// 		this->cwmp_remove_event(EVENT_REMOVE_AFTER_TRANSFER_COMPLETE, method_id); // 移除符合特定条件(参数)的事件节点
+	// 		if (!backup_check_transfer_complete())									  // 找不到名为 "transfer_complete" 的节点, 进入
+	// 			this->cwmp_remove_event(EVENT_REMOVE_AFTER_TRANSFER_COMPLETE, 0);	  // 移除符合特定条件(参数)的事件节点
+	// 	}
+	// 	// 如果要获取RPC方法，且现在还未拿到ACS的响应
+	// 	if (this->get_rpc_methods && !this->hold_requests)
+	// 	{
+	// 		if (this->rpc_get_rpc_methods()) // 发送getRPCMethods请求
+	// 		{
+	// 			return handle_error("sending GetRPCMethods failed\n");
+	// 		}
+	// 		Log(NAME, L_NOTICE, "receive GetRPCMethodsResponse from the ACS\n");
 
-			this->get_rpc_methods = false; // 修改为false，因为已经请求过了
-		}
+	// 		this->get_rpc_methods = false; // 修改为false，因为已经请求过了
+	// 	}
 
-		if (this->cwmp_handle_messages())
-		{
-			return handle_error("handling xml message failed\n");
-		}
-		this->hold_requests = false;
-	} while (this->get_rpc_methods || backup_check_transfer_complete());
+	// 	if (this->cwmp_handle_messages())
+	// 	{
+	// 		return handle_error("handling xml message failed\n");
+	// 	}
+	// 	this->hold_requests = false;
+	// } while (this->get_rpc_methods || backup_check_transfer_complete());
 
-	http_client_exit();
-	// xml_exit();
-	this->cwmp_handle_end_session();
-	this->retry_count = 0;
-	Log(NAME, L_NOTICE, "end session success\n");
+	// http_client_exit();
+	// // xml_exit();
+	// this->cwmp_handle_end_session();
+	// this->retry_count = 0;
+	// Log(NAME, L_NOTICE, "end session success\n");
 	return 0;
 }
 
@@ -618,7 +660,7 @@ void cwmpInfo::cwmp_periodic_inform(int inform_num_copy, long interval)
 	if (config->acs->periodic_enable && this->inform_num == inform_num_copy)
 	{
 		this->cwmp_add_event(EVENT_PERIODIC, "", 0, EVENT_BACKUP);
-		this->cwmp_add_inform_timer();
+		this->cwmp_add_inform_timer(10);
 		Log(NAME, L_DEBUG, "extract the inform function\n");
 	}
 }
@@ -644,24 +686,26 @@ int cwmpInfo::cwmp_periodic_inform_time(void)
 
 /**
  * 在会话结束时判断是否需要进行哪些操作
-*/
+ */
 void cwmpInfo::cwmp_handle_end_session(void)
 {
-	external_action_simple_execute("apply", "service", NULL);
-	if (this->end_session & ENDS_FACTORY_RESET) {
+	// external_action_simple_execute("apply", "service", NULL);
+	if (this->end_session & ENDS_FACTORY_RESET)
+	{
 		Log(NAME, L_NOTICE, "end session: factory reset\n");
-		do_factory_reset();//恢复出厂
+		// do_factory_reset();//恢复出厂
 		exit(EXIT_SUCCESS);
 	}
-	if (this->end_session & ENDS_REBOOT) {
+	if (this->end_session & ENDS_REBOOT)
+	{
 		Log(NAME, L_NOTICE, "end session: reboot\n");
-		do_reboot();//重启
+		// do_reboot();//重启
 		exit(EXIT_SUCCESS);
 	}
-	if (this->end_session & ENDS_RELOAD_CONFIG) {
+	if (this->end_session & ENDS_RELOAD_CONFIG)
+	{
 		Log(NAME, L_NOTICE, "end session: configuration reload\n");
 		config_load();
 	}
 	this->end_session = 0;
 }
-

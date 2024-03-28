@@ -119,9 +119,9 @@ int xml_parse_get_rpc_methods_response_message(char *msg_in);
 int xml_handle_message(char *msg_in, char **msg_out);
 int xml_get_index_fault(char *fault_code);
 
-mxml_node_t *xml_create_generic_fault_message(mxml_node_t *body, int code);
+tinyxml2::XMLElement *xml_create_generic_fault_message(tinyxml2::XMLElement *body, int code);
 int xml_add_cwmpid(tinyxml2::XMLElement *tree);
 int xml_parse_transfer_complete_response_message(char *msg_in);
-int xml_create_set_parameter_value_fault_message(mxml_node_t *body, int code);
+int xml_create_set_parameter_value_fault_message(tinyxml2::XMLElement *body, int code);
 
 #endif // _CWMP_XML_

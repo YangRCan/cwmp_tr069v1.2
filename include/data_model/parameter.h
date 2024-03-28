@@ -124,7 +124,7 @@ void deleteObject(const char *path);
 void downloadFile(const char *url, const char *fileType, const char *fileSize, const char *username, const char *password);
 void applyDownloadFile(const char *fileType);
 void uploadFile(const char *url, const char *fileType, const char *username, const char *password);
-InformParameter *getInformParameter();
+InformParameter **getInformParameter();
 
 // 数据模型相关的函数
 int addObjectToDataModel(char *path, const unsigned char writable, const unsigned char limit, void (*function)());
@@ -152,6 +152,7 @@ cJSON *getParameterJSON();
 ParameterInfoStruct **getChildFromJson(const char *path);
 void getDescendantsFromJson(const char *path, cJSON *object, ParameterInfoStruct ***List, int *const index);
 ParameterAttributeStruct **getAttributesFromJson(const char *parameter);
+InformParameter **getInfoParamFromJson(const char *parameter);
 void printAllParameters(cJSON *jsonObj, char *str);
 
 // 类型转换或判断等相关的函数
@@ -160,6 +161,8 @@ char *concatenateStrings(const char *str1, const char *str2);
 bool isNumeric(const char *str);
 int download_file_to_dir(const char *url, const char *username, const char *password, const char *dir);
 void getExecutionStatus(int *status, int *fault);
+
+extern int Fault_Code;
 
 #if defined(__cplusplus)||defined(c_plusplus)
 }

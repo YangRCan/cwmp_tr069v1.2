@@ -79,7 +79,9 @@
         "thread": "cpp",
         "cinttypes": "cpp",
         "variant": "cpp",
-        "dirent.h": "c"
+        "dirent.h": "c",
+        "condition_variable": "cpp",
+        "mutex": "cpp"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }
