@@ -14,11 +14,30 @@
 #include "faultCode.h"
 #include "cwmpclient.h"
 #include "time_tool.h"
+#include "xml.h"
 
 namespace tx = tinyxml2;
 namespace fs = std::filesystem;
 
 tx::XMLDocument backup_doucment;
+
+/**
+ * 在xml树中查找是否有标签值为 label 的标签
+ */
+static tx::XMLElement *findElementBylabel(tx::XMLElement *element, const char *label)
+{
+    if (!element)
+        return nullptr;
+    if (strcmp(element->Value(), label) == 0)
+        return element;
+    for (tx::XMLElement *child = element->FirstChildElement(); child; child = child->NextSiblingElement())
+    {
+        tx::XMLElement *found = findElementBylabel(child, label);
+        if (found)
+            return found;
+    }
+    return nullptr;
+}
 
 /**
  * 创建根标签 backup_file，及其子标签 cwmp
@@ -409,6 +428,16 @@ void backup_check_software_version(void)
 }
 
 /**
+ * 在 xml 文件中查找第一个 transfer_complete 并返回
+ * 没有则为 nullptr
+*/
+tx::XMLElement *backup_check_transfer_complete(void)
+{
+    tx::XMLElement *root = backup_doucment.RootElement();
+    return findElementBylabel(root, "transfer_complete");
+}
+
+/**
  * 删除传入的节点
  */
 int backup_remove_node(tx::XMLElement *node)
@@ -614,3 +643,69 @@ int backup_update_complete_time_transfer_complete(tx::XMLElement *node)
     }
     return 0;
 }
+
+/**
+ * 从传入的 XML 节点中提取特定的信息，并将这些信息保存到一个新的 XML 节点中
+*/
+int backup_extract_transfer_complete(tx::XMLElement *node, std::string &msg_out, int *method_id)
+{
+    tx::XMLDocument doc;
+	tx::XMLElement *tree, *b, *n;
+	const char *val;
+    
+    doc.Parse(CWMP_TRANSFER_COMPLETE_MESSAGE);
+    tree = doc.RootElement();
+	if (!tree) return -1;
+
+	if(xml_add_cwmpid(tree)) return -1;
+
+    b = findElementBylabel(node, "command_key");
+	if (!b) return -1;
+    n = findElementBylabel(tree, "CommandKey");
+	if (!n) return -1;
+	if (!b->GetText()) { //检查 XML 节点 b 的子节点是否存在、其类型是否为 MXML_OPAQUE 且值不为空
+		val = b->GetText();
+		n->SetText(val);//创建一个新的 mxml_node_t 节点 n，将经过处理的值设置为这个新节点的值
+	}
+	else
+		n->SetText("");
+
+    b = findElementBylabel(node, "fault_code");
+	if (!b) return -1;
+    n = findElementBylabel(tree, "FaultCode");
+	if (!n) return -1;
+    n->SetText(b->GetText());
+
+    b = findElementBylabel(node, "fault_string");
+	if (!b) return -1;
+	if (!b->GetText()) {
+        n = findElementBylabel(tree, "FaultString");
+		if (!n) return -1;
+        val = b->GetText();
+        n->SetText(val);
+	}
+
+    b = findElementBylabel(node, "start_time");
+	if (!b) return -1;
+    n = findElementBylabel(tree, "StartTime");
+	if (!n) return -1;
+    n->SetText(b->GetText());
+
+    b = findElementBylabel(node, "complete_time");
+	if (!b) return -1;
+    n = findElementBylabel(tree, "CompleteTime");
+	if (!n) return -1;
+    n->SetText(b->GetText());
+
+    b = findElementBylabel(node, "method_id");
+	if (!b) return -1;
+	*method_id = atoi(b->GetText());
+
+    tx::XMLPrinter printer;
+    doc.Print(&printer);
+    msg_out.assign(printer.CStr());
+    std::cout << msg_out << std::endl;
+    
+	return 0; //返回0表示成功
+}
+

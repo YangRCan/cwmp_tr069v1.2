@@ -149,6 +149,8 @@ private:
 	inline int cwmp_retry_count_interval(int retry_count);
 	inline void cwmp_retry_session(void);
 	inline int rpc_inform(void);
+	inline int rpc_get_rpc_methods(void);
+	inline int rpc_transfer_complete(tinyxml2::XMLElement *node, int *method_id);
 	void cwmp_handle_end_session(void);
 public:
 	cwmpInfo();
@@ -158,6 +160,7 @@ public:
 	struct deviceInfo get_device_info(void);
 	std::list<notification *> get_notifications(void);
 	void set_get_rpc_methods(bool flag);
+	void set_hold_requests(bool hold_requests);
 	void set_deviceid(std::string manufacturer, std::string oui, std::string product_class, std::string serial_number);
 
 
@@ -181,7 +184,7 @@ public:
 	void cwmp_periodic_inform_init(void);
 
 	int cwmp_inform(void);
-
+	int cwmp_handle_messages(void);
 	void cwmp_update_value_change(void);
 
 	int cwmp_periodic_inform_time(void);

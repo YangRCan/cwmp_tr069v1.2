@@ -13,6 +13,7 @@
     " -h, --help              Display this help text\n"                                   \
     " -v, --version           Display the %s version\n"
 
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 #define FREE(x) do { free(x); x = NULL; } while (0);
 
 enum start_event_enum {

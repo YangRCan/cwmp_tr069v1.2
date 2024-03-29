@@ -597,7 +597,7 @@ void downloadFile(const char *url, const char *fileType, const char *fileSize, c
 void applyDownloadFile(const char *fileType)
 {
     printf("正在安装文件");
-    if (strcmp(fileType, "1 Firmware Upgrade Image"))
+    if (strcmp(fileType, "1 Firmware Upgrade Image") == 0)
     {
 #if defined(__ANDROID__)
         printf("Applying update.zip...\n");
@@ -625,7 +625,7 @@ void uploadFile(const char *url, const char *fileType, const char *username, con
         Fault_Code = FAULT_9003;
         return;
     }
-    printf("正在上传，上传完成！\n");
+    printf("Uploading, Upload complete!\n");
 #if defined(__ANDROID__)
 
     FILE *fp;
@@ -1835,6 +1835,7 @@ int download_file_to_dir(const char *url, const char *username, const char *pass
         Fault_Code = FAULT_9003;
         return 0;
     }
+    printf("url is %s", url);
     filename++;                // 移除斜杠
     char output[FILENAME_MAX]; // 下载后保存的文件名
     snprintf(output, sizeof(output), "%s/%s", dir, filename);

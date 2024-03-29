@@ -108,20 +108,18 @@ struct rpc_method {
 	int (*handler)(tinyxml2::XMLElement *body_in, tinyxml2::XMLElement *tree_in, tinyxml2::XMLElement *tree_out);
 };
 
-int createXML(const char* xmlPath);
-
-// void xml_exit(void);
 
 int xml_prepare_inform_message(std::string &msg_out);
-int xml_parse_inform_response_message(char *msg_in);
-int xml_prepare_get_rpc_methods_message(char **msg_out);
-int xml_parse_get_rpc_methods_response_message(char *msg_in);
-int xml_handle_message(char *msg_in, char **msg_out);
+int xml_parse_inform_response_message(std::string msg_in);
+int xml_prepare_get_rpc_methods_message(std::string &msg_out);
+int xml_parse_get_rpc_methods_response_message(std::string msg_in);
+int xml_parse_transfer_complete_response_message(std::string msg_in);
+int xml_handle_message(std::string msg_in, std::string &msg_out);
 int xml_get_index_fault(char *fault_code);
 
 tinyxml2::XMLElement *xml_create_generic_fault_message(tinyxml2::XMLElement *body, int code);
-int xml_add_cwmpid(tinyxml2::XMLElement *tree);
-int xml_parse_transfer_complete_response_message(char *msg_in);
 int xml_create_set_parameter_value_fault_message(tinyxml2::XMLElement *body, int code);
+void xml_exit(void);
+int xml_add_cwmpid(tinyxml2::XMLElement *tree);
 
 #endif // _CWMP_XML_

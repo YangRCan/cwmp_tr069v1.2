@@ -100,6 +100,14 @@ void cwmpInfo::set_get_rpc_methods(bool flag)
 }
 
 /**
+ * 设置成员变量hold_requests的值
+ */
+void cwmpInfo::set_hold_requests(bool hold_requests)
+{
+	this->hold_requests = hold_requests;
+}
+
+/**
  * 设置成员deviceid的成员值
  */
 void cwmpInfo::set_deviceid(std::string manufacturer, std::string oui, std::string product_class, std::string serial_number)
@@ -174,6 +182,7 @@ void cwmpInfo::cwmp_clear_notifications(void)
 	for (auto it = this->notifications.begin(); it != this->notifications.end(); ++it)
 	{
 		delete *it;
+		*it = nullptr;
 	}
 	this->notifications.clear();
 }
@@ -393,11 +402,12 @@ void cwmpInfo::cwmp_add_inform_timer(int64_t interval)
  */
 void cwmpInfo::cwmp_do_inform(int64_t interval)
 {
-	if (!this->inform_mtx.try_lock()) {
-        // 获取锁失败，执行退出逻辑
+	if (!this->inform_mtx.try_lock())
+	{
+		// 获取锁失败，执行退出逻辑
 		Log(NAME, L_NOTICE, "Failed to acquire lock. Exiting thread.\n");
-        return;
-    }
+		return;
+	}
 	// 等待5毫秒
 	std::this_thread::sleep_for(std::chrono::milliseconds(interval));
 	this->retry_inform = false;
@@ -496,25 +506,112 @@ inline int cwmpInfo::rpc_inform(void)
 
 	Log(NAME, L_NOTICE, "send Inform\n");
 
-	do {
+	do
+	{
+		msg_in.clear();
 		// 发送 Inform 消息并接收响应
-		if (http_send_message(msg_out, msg_in)) {//返回结果存在msg_in中(msg_in是一个引用参数)
+		if (http_send_message(msg_out, msg_in))
+		{ // 返回结果存在msg_in中(msg_in是一个引用参数)
 			Log(NAME, L_DEBUG, "sending Inform http message failed\n");
-			error = -1; break;
+			error = -1;
+			break;
 		}
 		// 如果接收到空消息，则记录日志并设置错误标记
-		if (msg_in.empty()) {
+		if (msg_in.empty())
+		{
 			Log(NAME, L_DEBUG, "parse Inform xml message from ACS: Empty message\n");
-			error = -1; break;
+			error = -1;
+			break;
 		}
 		// 解析响应消息，解析ACS的返回消息(xml格式)，返回成功0、错误码8005、解析错误-1
-		// error = xml_parse_inform_response_message(msg_in);
-		// if (error && (error != FAULT_ACS_8005)) {// 如果解析失败且错误码不是 FAULT_ACS_8005，则记录日志并设置错误标记
-		// 	Log(NAME, L_DEBUG, "parse Inform xml message from ACS failed\n");
-		// 	error = -1; break;
-		// }
-	} while(error && (count++)<10);//error=0表示成功，退出循环，当错误码存在且循环次数不超过10次时，重试发送和解析消息的过程
-	//释放消息的内存，并返回错误码
+		error = xml_parse_inform_response_message(msg_in);
+		if (error && (error != FAULT_ACS_8005))
+		{ // 如果解析失败且错误码不是 FAULT_ACS_8005，则记录日志并设置错误标记
+			Log(NAME, L_DEBUG, "parse Inform xml message from ACS failed\n");
+			error = -1;
+			break;
+		}
+	} while (error && (count++) < 10); // error=0表示成功，退出循环，当错误码存在且循环次数不超过10次时，重试发送和解析消息的过程
+	// 释放消息的内存，并返回错误码
+	return error;
+}
+
+/**
+ * 它用于发送 get_rpc 消息，并在接收到响应后解析消息内容
+ */
+inline int cwmpInfo::rpc_get_rpc_methods(void)
+{
+	std::string msg_in = "", msg_out = "";
+	int error = 0, count = 0;
+
+	if (xml_prepare_get_rpc_methods_message(msg_out)) {//构造一个带getRPCMethods方法的xml字符串,存在msg_out
+		Log(NAME, L_DEBUG, "GetRPCMethods xml message creating failed\n");
+		return -1;
+	}
+
+	Log(NAME, L_NOTICE, "send RPC ACS GetRPCMethods\n");
+
+	do {
+		msg_in.clear();
+
+		if (http_send_message(msg_out, msg_in)) {//发送该请求
+			Log(NAME, L_DEBUG, "sending GetRPCMethods http message failed\n");
+			error = -1;
+			break;
+		}
+
+		if (msg_in.empty())//响应为空
+			break;
+		//解析发送GetRPCMethods后，ACS的响应内容,查看是否出错，返回成功0、错误码8005、解析错误-1，并修改了cwmp->hold_requests 的布尔值
+		error = xml_parse_get_rpc_methods_response_message(msg_in);
+		if (error == -1) {
+			Log(NAME, L_DEBUG, "parse GetRPCMethods xml message from ACS failed\n");
+			break;
+		}
+		else if (error && (error != FAULT_ACS_8005)) {
+			error = 0;
+			break;
+		}
+	} while(error && (count++)<10);//请求成功则退出，否则重试10次
+
+	return error;
+}
+
+/**
+ * 发送transfer_complete http消息给ACS，并查看响应是否有出错
+*/
+inline int cwmpInfo::rpc_transfer_complete(tx::XMLElement *node, int *method_id)
+{
+	std::string msg_in, msg_out;
+	int error = 0, count = 0;
+	//从传入的 XML 节点中提取特定的信息，并将这些信息保存到一个新的 XML 节点中（msg_out）,同时，也会提取方法ID并存储在 method_id 指针中
+	if (backup_extract_transfer_complete(node, msg_out, method_id)) {
+		Log(NAME, L_DEBUG, " Transfer Complete xml message creating failed\n");
+		return -1;
+	}
+
+	Log(NAME, L_NOTICE, "send RPC ACS TransferComplete\n");
+
+	do {
+		msg_in.clear();
+
+		if (http_send_message(msg_out, msg_in)) {//该函数用于发送 HTTP POST 请求并接收响应消息（结果存在msg_in）
+			Log(NAME, L_DEBUG, "sending Transfer Complete http message failed\n");
+			error = -1; break;
+		}
+		if (msg_in.empty())
+			break;
+
+		error = xml_parse_transfer_complete_response_message(msg_in); //从ACS响应内容中解析是否有错误码，并获取cwmp->hold_requests 的布尔值
+		if (error == -1) {
+			Log(NAME, L_DEBUG, "parse Transfer Complete xml message from ACS failed\n");
+			break;
+		}
+		else if (error && (error != FAULT_ACS_8005)) {
+			error = 0; break;
+		}
+	} while(error && (count++)<10);//直到error为0或者循环次数超过10次为止
+
 	return error;
 }
 
@@ -554,7 +651,7 @@ int cwmpInfo::cwmp_inform(void)
 	{
 		Log(NAME, L_DEBUG, message.c_str());
 		http_client_exit();
-		// xml_exit();
+		xml_exit();
 		this->cwmp_handle_end_session();
 		Log(NAME, L_NOTICE, "end session failed\n");
 		this->cwmp_retry_session();
@@ -572,50 +669,90 @@ int cwmpInfo::cwmp_inform(void)
 	}
 	Log(NAME, L_NOTICE, "receive InformResponse from the ACS\n");
 
-	// this->cwmp_remove_event(EVENT_REMOVE_AFTER_INFORM, 0); // 移除符合特定条件(参数)的事件节点
-	// this->cwmp_clear_notifications();					   // 清空cwmp->notifications链表
+	this->cwmp_remove_event(EVENT_REMOVE_AFTER_INFORM, 0); // 移除符合特定条件(参数)的事件节点
+	this->cwmp_clear_notifications();					   // 清空cwmp->notifications链表
 
-	// do
-	// {
-	// 	// 循环发送http完成请求给ACS，直到拿到响应，或出错
-	// 	// backup_check_transfer_complete: 在 backup_tree 中查找名为 "transfer_complete" 的节点, 并返回
-	// 	while ((node = backup_check_transfer_complete()) && !this->hold_requests)
-	// 	{													   // 在rpc_inform（）中的解析响应数据时获取了cwmp->hold_requests的值
-	// 		if (this->rpc_transfer_complete(node, &method_id)) // 发送传输完成http给ACS，并查看响应是否有出错
-	// 		{
-	// 			return handle_error("sending TransferComplete failed\n");
-	// 		}
-	// 		Log(NAME, L_NOTICE, "receive TransferCompleteResponse from the ACS\n");
+	do
+	{
+		// 循环发送http完成请求给ACS，直到拿到响应，或出错
+		// backup_check_transfer_complete: 在 backup_tree 中查找名为 "transfer_complete" 的节点, 并返回
+		while ((node = backup_check_transfer_complete()) && !this->hold_requests)
+		{													   // 在rpc_inform（）中的解析响应数据时获取了cwmp->hold_requests的值
+			if (this->rpc_transfer_complete(node, &method_id)) // 发送传输完成http给ACS，并查看响应是否有出错
+			{
+				return handle_error("sending TransferComplete failed\n");
+			}
+			Log(NAME, L_NOTICE, "receive TransferCompleteResponse from the ACS\n");
 
-	// 		backup_remove_transfer_complete(node);									  // 释放传入节点的内存空间
-	// 		this->cwmp_remove_event(EVENT_REMOVE_AFTER_TRANSFER_COMPLETE, method_id); // 移除符合特定条件(参数)的事件节点
-	// 		if (!backup_check_transfer_complete())									  // 找不到名为 "transfer_complete" 的节点, 进入
-	// 			this->cwmp_remove_event(EVENT_REMOVE_AFTER_TRANSFER_COMPLETE, 0);	  // 移除符合特定条件(参数)的事件节点
-	// 	}
-	// 	// 如果要获取RPC方法，且现在还未拿到ACS的响应
-	// 	if (this->get_rpc_methods && !this->hold_requests)
-	// 	{
-	// 		if (this->rpc_get_rpc_methods()) // 发送getRPCMethods请求
-	// 		{
-	// 			return handle_error("sending GetRPCMethods failed\n");
-	// 		}
-	// 		Log(NAME, L_NOTICE, "receive GetRPCMethodsResponse from the ACS\n");
+			backup_remove_node(node);									  // 释放传入节点的内存空间
+			this->cwmp_remove_event(EVENT_REMOVE_AFTER_TRANSFER_COMPLETE, method_id); // 移除符合特定条件(参数)的事件节点
+			if (!backup_check_transfer_complete())									  // 找不到名为 "transfer_complete" 的节点, 进入
+				this->cwmp_remove_event(EVENT_REMOVE_AFTER_TRANSFER_COMPLETE, 0);	  // 移除符合特定条件(参数)的事件节点
+		}
+		// 如果要获取RPC方法，且现在还未拿到ACS的响应
+		if (this->get_rpc_methods && !this->hold_requests)
+		{
+			if (this->rpc_get_rpc_methods()) // 发送getRPCMethods请求
+			{
+				return handle_error("sending GetRPCMethods failed\n");
+			}
+			Log(NAME, L_NOTICE, "receive GetRPCMethodsResponse from the ACS\n");
 
-	// 		this->get_rpc_methods = false; // 修改为false，因为已经请求过了
-	// 	}
+			this->get_rpc_methods = false; // 修改为false，因为已经请求过了
+		}
 
-	// 	if (this->cwmp_handle_messages())
-	// 	{
-	// 		return handle_error("handling xml message failed\n");
-	// 	}
-	// 	this->hold_requests = false;
-	// } while (this->get_rpc_methods || backup_check_transfer_complete());
+		if (this->cwmp_handle_messages())//发送空请求
+		{
+			return handle_error("handling xml message failed\n");
+		}
+		this->hold_requests = false;
+	} while (this->get_rpc_methods || backup_check_transfer_complete());
 
-	// http_client_exit();
-	// // xml_exit();
-	// this->cwmp_handle_end_session();
-	// this->retry_count = 0;
-	// Log(NAME, L_NOTICE, "end session success\n");
+	http_client_exit();
+	xml_exit();
+	this->cwmp_handle_end_session();
+	this->retry_count = 0;
+	Log(NAME, L_NOTICE, "end session success\n");
+	return 0;
+}
+
+/**
+ * 发送空请求
+*/
+int cwmpInfo::cwmp_handle_messages(void)
+{
+	std::string msg_in, msg_out;
+	msg_in = msg_out = "";
+
+	Log(NAME, L_NOTICE, "send empty message to the ACS\n");
+
+	while (1) {
+		msg_in.clear();
+
+		if (http_send_message(msg_out, msg_in)) {//发送请求
+			Log(NAME, L_DEBUG, "sending http message failed\n");
+			return -1;
+		}
+
+		if (msg_in.empty()) {//响应内容为空
+			Log(NAME, L_NOTICE, "receive empty message from the ACS\n");//是的话说明ACS发的是空请求
+			break;
+		}
+
+		msg_out.clear();
+
+		if (xml_handle_message(msg_in, msg_out)) {
+			Log(NAME, L_NOTICE, "handling message failed\n");
+			Log(NAME, L_DEBUG, "xml handling message failed\n");
+			return -1;
+		}
+
+		if (msg_out.empty()) {
+			Log(NAME, L_NOTICE, "handling message failed\n");
+			Log(NAME, L_DEBUG, "acs response message is empty\n");
+			return -1;
+		}
+	}
 	return 0;
 }
 
