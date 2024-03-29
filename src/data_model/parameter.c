@@ -30,9 +30,6 @@ static const char *delimiter = "."; // 路径分隔符
 
 char *download_dir;
 
-static int exe_status = 0;
-int Fault_Code = FAULT_0;
-
 /**######################
 ##                     ##
 ##     初始化函数       ##
@@ -122,36 +119,39 @@ void getAllParameters()
  * 修改某属性名对应的配置的值
  * （注：前提这个属性允许被修改）
  */
-void setParameter(const char *path, const char *value, int verify)
+ExecuteResult setParameter(const char *path, const char *value, int verify)
 {
+    ExecuteResult result;
+    result.fault_code = FAULT_0;
+    result.status = 0;
     int length = strlen(path);
     if (path[length - 1] == '.')
     {
         printErrorInfo(FAULT_9003);
-        Fault_Code = FAULT_9003;
-        return;
+        result.fault_code = FAULT_9003;
+        return result;
     }
     PATH = getSubStrings(path, &count);
     if (strcmp(dataModel->name, PATH[0]) != 0)
     {
         printErrorInfo(FAULT_9003);
         freePath(PATH, count);
-        Fault_Code = FAULT_9003;
-        return;
+        result.fault_code = FAULT_9003;
+        return result;
     }
 
     int faultCode = checkParameterPath();
     if (faultCode > 0)
     {
         freePath(PATH, count);
-        return;
+        return result;
     }
     else if (faultCode < 0 && verify == MUSTVERIFY)
     {
         printErrorInfo(FAULT_9008);
         freePath(PATH, count);
-        Fault_Code = FAULT_9008;
-        return;
+        result.fault_code = FAULT_9008;
+        return result;
     }
 
     cJSON *node = getParameterJSON();
@@ -159,43 +159,46 @@ void setParameter(const char *path, const char *value, int verify)
     {
         cJSON_SetValuestring(cJSON_GetObjectItemCaseSensitive(node, "value"), value);
         save_data();
-        Fault_Code = FAULT_0;
-        exe_status = 1;
+        result.status = 1;
     }
     else
     {
-        Fault_Code = FAULT_9003;
+        result.fault_code = FAULT_9003;
     }
     freePath(PATH, count);
+    return result;
 }
 
 /**
  * 获取某属性名对应的配置的值，
  * 参数 path 指的是某对应参数的完整路径
  */
-void getParameter(const char *path, char **str)
+ExecuteResult getParameter(const char *path, char **str)
 {
+    ExecuteResult result;
+    result.fault_code = FAULT_0;
+    result.status = 0;
     int length = strlen(path);
     if (path[length - 1] == '.')
     {
         printErrorInfo(FAULT_9005);
-        Fault_Code = FAULT_9005;
-        return;
+        result.fault_code = FAULT_9005;
+        return result;
     }
     PATH = getSubStrings(path, &count);
     if (strcmp(dataModel->name, PATH[0]) != 0)
     {
         printErrorInfo(FAULT_9005);
         freePath(PATH, count);
-        Fault_Code = FAULT_9005;
-        return;
+        result.fault_code = FAULT_9005;
+        return result;
     }
 
-    int faultCode = checkParameterPath();
-    if (faultCode > 0)
+    result.fault_code = checkParameterPath();
+    if (result.fault_code > 0)
     {
         freePath(PATH, count);
-        return;
+        return result;
     }
 
     cJSON *node = getParameterJSON();
@@ -203,23 +206,26 @@ void getParameter(const char *path, char **str)
     {
         node = cJSON_GetObjectItemCaseSensitive(node, "value");
         *str = node->valuestring;
-        Fault_Code = FAULT_0;
-        exe_status = 1;
+        result.status = 1;
     }
     else
     {
         printErrorInfo(FAULT_9005);
-        Fault_Code = FAULT_9005;
+        result.fault_code = FAULT_9005;
     }
     freePath(PATH, count);
+    return result;
 }
 
 /**
  * NextLevel 的值只能是 0 或 1。0 表示列出该对象参数及其所有子对象或参数。
  * 1 表示列出路径中包含的所有参数。 如果路径为空且NextLevel为1，则仅列出ROOT
  */
-void getParameterName(const char *path, const char *NextLevel, ParameterInfoStruct ***parameterList)
+ExecuteResult getParameterName(const char *path, const char *NextLevel, ParameterInfoStruct ***parameterList)
 {
+    ExecuteResult result;
+    result.fault_code = FAULT_0;
+    result.status = 0;
     int nextLevel;
     if (isNumeric(NextLevel))
         nextLevel = atoi(NextLevel);
@@ -230,8 +236,8 @@ void getParameterName(const char *path, const char *NextLevel, ParameterInfoStru
     else
     {
         printErrorInfo(FAULT_9003);
-        Fault_Code = FAULT_9003;
-        return;
+        result.fault_code = FAULT_9003;
+        return result;
     }
 
     if (!path && nextLevel)
@@ -247,9 +253,8 @@ void getParameterName(const char *path, const char *NextLevel, ParameterInfoStru
         }
         else
             printf("{ \" Object \" : \" %s \"}, { \" writable \" : \" %s \"}\n", concatenateStrings(ROOT, "."), "0");
-        Fault_Code = FAULT_0;
-        exe_status = 1;
-        return;
+        result.status = 1;
+        return result;
     }
 
     // 判断路径类型
@@ -298,28 +303,31 @@ void getParameterName(const char *path, const char *NextLevel, ParameterInfoStru
         else
         {
             printErrorInfo(FAULT_9005);
-            Fault_Code = FAULT_9005;
-            return;
+            result.fault_code = FAULT_9005;
+            return result;
         }
     }
     freePath(PATH, count);
-    Fault_Code = FAULT_0;
-    exe_status = 1;
+    result.status = 1;
+    return result;
 }
 
 /**
  * 修改与一个或多个CPE参数相关联的属性
  */
-int setParameterAttributes(ParameterAttributeStruct *parameterAttribute, const bool NotificationChange, const bool AccessListChange, const int numOfAccess)
+ExecuteResult setParameterAttributes(ParameterAttributeStruct *parameterAttribute, const bool NotificationChange, const bool AccessListChange, const int numOfAccess)
 {
+    ExecuteResult result;
+    result.fault_code = FAULT_0;
+    result.status = 0;
     int length = strlen(parameterAttribute->Name);
     char **pathList = getSubStrings(parameterAttribute->Name, &count);
     if (strcmp(dataModel->name, pathList[0]) != 0)
     {
         printErrorInfo(FAULT_9005);
         freePath(PATH, count);
-        Fault_Code = FAULT_9005;
-        return FAULT_9005;
+        result.fault_code = FAULT_9005;
+        return result;
     }
 
     cJSON *node = rootJSON;
@@ -353,9 +361,6 @@ int setParameterAttributes(ParameterAttributeStruct *parameterAttribute, const b
             }
 
             save_data();
-            Fault_Code = FAULT_0;
-            exe_status = 1;
-            return FAULT_0;
         }
         else
         {
@@ -370,17 +375,20 @@ int setParameterAttributes(ParameterAttributeStruct *parameterAttribute, const b
                 strcat(param.Name, node->string);
                 if (!cJSON_GetObjectItemCaseSensitive(node, "parameterType"))
                     strcat(param.Name, ".");
-                setParameterAttributes(&param, NotificationChange, AccessListChange, numOfAccess);
+                ExecuteResult rlt = setParameterAttributes(&param, NotificationChange, AccessListChange, numOfAccess);
                 free(param.Name);
+                if(rlt.fault_code) return rlt;
                 node = node->next;
             }
         }
+        result.status = 1;
+        return result;
     }
     else
     {
         printErrorInfo(FAULT_9005);
-        Fault_Code = FAULT_9005;
-        return FAULT_9005;
+        result.fault_code = FAULT_9005;
+        return result;
     }
 }
 
@@ -388,8 +396,10 @@ int setParameterAttributes(ParameterAttributeStruct *parameterAttribute, const b
  * 读取与一个或多个CPE参数相关联的属性。
  * 设定NULL为ParameterAttributeStruct列表结尾
  */
-ParameterAttributeStruct **getParameterAttributes(const char *const *ParameterNames, const int numOfParameter)
+ParameterAttributeStruct **getParameterAttributes(const char *const *ParameterNames, const int numOfParameter, ExecuteResult *exe_rlt)
 {
+    exe_rlt->fault_code = FAULT_0;
+    exe_rlt->status = 0;
     ParameterAttributeStruct **result = (ParameterAttributeStruct **)malloc(sizeof(ParameterAttributeStruct *));
     result[0] = NULL;
     int resultLength = 0;
@@ -404,7 +414,7 @@ ParameterAttributeStruct **getParameterAttributes(const char *const *ParameterNa
             {
                 printErrorInfo(FAULT_9005);
                 freePath(pathList, count);
-                Fault_Code = FAULT_9005;
+                exe_rlt->fault_code = FAULT_9005;
                 return NULL;
             }
             freePath(pathList, count);
@@ -427,8 +437,7 @@ ParameterAttributeStruct **getParameterAttributes(const char *const *ParameterNa
         free(row);
         resultLength += len;
     }
-    Fault_Code = FAULT_0;
-    exe_status = 1;
+    exe_rlt->status = 1;
     return result;
 }
 
@@ -436,33 +445,36 @@ ParameterAttributeStruct **getParameterAttributes(const char *const *ParameterNa
  * 添加Object实例
  * 需要检查该Object是否为可创建，即数据模型中该路径后为{i}占位符, 且支持PresentObject、CreateObject或AddObject权限
  */
-void addObject(const char *path, char **instanceNumber)
+ExecuteResult addObject(const char *path, char **instanceNumber)
 {
+    ExecuteResult result;
+    result.fault_code = FAULT_0;
+    result.status;
     int length = strlen(path);
     if (path[length - 1] != '.')
     {
         printErrorInfo(FAULT_9005);
-        Fault_Code = FAULT_9005;
-        return;
+        result.fault_code = FAULT_9005;
+        return result;
     }
     PATH = getSubStrings(path, &count);
     if (strcmp(dataModel->name, PATH[0]) != 0)
     {
         printErrorInfo(FAULT_9005);
-        Fault_Code = FAULT_9005;
-        return;
+        result.fault_code = FAULT_9005;
+        return result;
     }
     if (addObjectToData(instanceNumber) > 0)
     {
-        exe_status = 0;
+        result.status = 0;
     }
     else
     {
-        Fault_Code = FAULT_0;
-        exe_status = 1;
+        result.status = 1;
     }
 
     freePath(PATH, count);
+    return result;
 }
 
 /**
@@ -470,52 +482,63 @@ void addObject(const char *path, char **instanceNumber)
  * 调用将对象实例的路径名（包括实例号）
  * 先检查该path是否为可删除，即该路径是最后是否为占位符的实例编号，且该实例在JSON中必须存在
  */
-void deleteObject(const char *path)
+ExecuteResult deleteObject(const char *path)
 {
+    ExecuteResult result;
+    result.fault_code = FAULT_0;
+    result.status = 0;
     int length = strlen(path);
     if (path[length - 1] != '.')
     {
         printErrorInfo(FAULT_9005);
-        Fault_Code = FAULT_9005;
-        return;
+        result.fault_code = FAULT_9005;
+        return result;
     }
     PATH = getSubStrings(path, &count);
     if (strcmp(dataModel->name, PATH[0]) != 0)
     {
         printErrorInfo(FAULT_9005);
-        Fault_Code = FAULT_9005;
-        return;
+        result.fault_code = FAULT_9005;
+        return result;
     }
 
     struct Object *obj = checkObjectPath();    // 如果最后一个是数字，也会返回object对象{i}
     if (!obj && strcmp(obj->name, "{i}") != 0) // 路径不存在或者不是实例化对象
-        return;
-
+    {
+        result.fault_code = FAULT_9005;
+        return result;
+    }
     count--;
     cJSON *node = getParameterJSON(); // 获取路径的最后一个JSON对象
     count++;
     cJSON *child = getParameterJSON();
     if (!node || !child)
-        return; // 路径不正确或者实例不存在
+    {
+        result.fault_code = FAULT_9005;
+        return result; // 路径不正确或者实例不存在
+    }
 
     cJSON_DeleteItemFromObject(node, child->string); // 内部调用了cJSON_Delete将移除的对象释放
     save_data();
-    Fault_Code = FAULT_0;
-    exe_status = 1;
+    result.status = 1;
+    return result;
 }
 
 /**
  * 文件下载函数
  * fileSize可为NULL
  */
-void downloadFile(const char *url, const char *fileType, const char *fileSize, const char *username, const char *password)
+ExecuteResult downloadFile(const char *url, const char *fileType, const char *fileSize, const char *username, const char *password)
 {
+    ExecuteResult result;
+    result.fault_code = FAULT_0;
+    result.status = 0;
     // 检查参数
     if (url == NULL || fileType == NULL)
     {
         printErrorInfo(FAULT_9003);
-        Fault_Code = FAULT_9003;
-        return;
+        result.fault_code = FAULT_9003;
+        return result;
     }
 
 #ifdef _WIN32
@@ -528,8 +551,8 @@ void downloadFile(const char *url, const char *fileType, const char *fileSize, c
         if (GetLastError() != ERROR_ALREADY_EXISTS)
         {
             perror("Failed to create download directory");
-            Fault_Code = FAULT_9010;
-            return;
+            result.fault_code = FAULT_9010;
+            return result;
         }
     }
     ULARGE_INTEGER freeBytesAvailable;
@@ -544,8 +567,8 @@ void downloadFile(const char *url, const char *fileType, const char *fileSize, c
         if (mkdir(download_dir, 0777) == -1)
         {
             perror("Failed to create download directory");
-            Fault_Code = FAULT_9010;
-            return;
+            result.fault_code = FAULT_9010;
+            return result;
         }
     }
     struct statvfs stat;
@@ -562,8 +585,8 @@ void downloadFile(const char *url, const char *fileType, const char *fileSize, c
         if (requiredSpace > freeSpace)
         {
             perror("Insufficient space to download the file\n");
-            Fault_Code = FAULT_9010;
-            return;
+            result.fault_code = FAULT_9010;
+            return result;
         }
     }
     // 路径存在删除路径文件夹下的所有文件
@@ -572,8 +595,8 @@ void downloadFile(const char *url, const char *fileType, const char *fileSize, c
     if (system(command) == -1)
     {
         printf("Failed to remove existing files from download directory");
-        Fault_Code = FAULT_9010;
-        return;
+        result.fault_code = FAULT_9010;
+        return result;
     }
     // 将用户名和密码拼接到url路径中
     char urlWithAuth[200];
@@ -583,19 +606,22 @@ void downloadFile(const char *url, const char *fileType, const char *fileSize, c
     if (!download_file_to_dir(url, NULL, NULL, download_dir))
     {
         fprintf(stderr, "Download failed.\n");
-        Fault_Code = FAULT_9010;
-        return;
+        result.fault_code = FAULT_9010;
+        return result;
     }
     // 下载成功
-    Fault_Code = FAULT_0;
-    exe_status = 1;
+    result.status = 1;
+    return result;
 }
 
 /**
  * 应用下载后的文件
  */
-void applyDownloadFile(const char *fileType)
+ExecuteResult applyDownloadFile(const char *fileType)
 {
+    ExecuteResult result;
+    result.fault_code = FAULT_0;
+    result.status = 0;
     printf("正在安装文件");
     if (strcmp(fileType, "1 Firmware Upgrade Image") == 0)
     {
@@ -611,19 +637,24 @@ void applyDownloadFile(const char *fileType)
         system("reboot recovery");
 #endif // __ANDROID__
     }
+    result.status = 1;
+    return result;
 }
 
 /**
  * 文件上传函数
  */
-void uploadFile(const char *url, const char *fileType, const char *username, const char *password)
+ExecuteResult uploadFile(const char *url, const char *fileType, const char *username, const char *password)
 {
+    ExecuteResult result;
+    result.fault_code = FAULT_0;
+    result.status = 0;
     // 检查参数
     if (url == NULL || fileType == NULL)
     {
         printErrorInfo(FAULT_9003);
-        Fault_Code = FAULT_9003;
-        return;
+        result.fault_code = FAULT_9003;
+        return result;
     }
     printf("Uploading, Upload complete!\n");
 #if defined(__ANDROID__)
@@ -635,8 +666,8 @@ void uploadFile(const char *url, const char *fileType, const char *username, con
     if (fp == NULL)
     {
         printf("Error: Failed to execute getprop command\n");
-        Fault_Code = FAULT_9002;
-        return;
+        result.fault_code = FAULT_9002;
+        return result;
     }
     if (fgets(serial, 32, fp) != NULL)
     {
@@ -646,8 +677,8 @@ void uploadFile(const char *url, const char *fileType, const char *username, con
     else
     {
         printf("Error: Failed to read serial number\n");
-        Fault_Code = FAULT_9002;
-        return;
+        result.fault_code = FAULT_9002;
+        return result;
     }
     pclose(fp);
     if (strlen(serial) == 0)
@@ -672,8 +703,8 @@ void uploadFile(const char *url, const char *fileType, const char *username, con
             if (mkdir(save_dir, 0777) == -1)
             {
                 printf("Error creating directory %s\n", save_dir);
-                Fault_Code = FAULT_9002;
-                return;
+                result.fault_code = FAULT_9002;
+                return result;
             }
         }
         char file_path[256];
@@ -683,8 +714,8 @@ void uploadFile(const char *url, const char *fileType, const char *username, con
         if (fp == NULL)
         {
             printf("Error executing logcat command\n");
-            Fault_Code = FAULT_9002;
-            return;
+            result.fault_code = FAULT_9002;
+            return result;
         }
         // 创建文件并写入logcat输出
         FILE *outputFile = fopen(file_path, "w");
@@ -692,8 +723,8 @@ void uploadFile(const char *url, const char *fileType, const char *username, con
         {
             printf("Error creating output file\n");
             pclose(fp);
-            Fault_Code = FAULT_9002;
-            return;
+            result.fault_code = FAULT_9002;
+            return result;
         }
         char buffer[4096];
         while (fgets(buffer, sizeof(buffer), fp) != NULL)
@@ -724,7 +755,7 @@ void uploadFile(const char *url, const char *fileType, const char *username, con
             if (res != CURLE_OK)
             {
                 fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
-                Fault_Code = FAULT_9011;
+                result.fault_code = FAULT_9011;
             }
             curl_easy_cleanup(curl);
         }
@@ -735,8 +766,8 @@ void uploadFile(const char *url, const char *fileType, const char *username, con
     free(serial);
 
 #endif // __ANDROID__
-    Fault_Code = FAULT_0;
-    exe_status = 1; // 成功
+    result.status = 1; // 成功
+    return result;
 }
 
 /**
@@ -765,14 +796,12 @@ int addObjectToDataModel(char *path, const unsigned char writable, const unsigne
     if (path[length - 1] != '.')
     {
         printErrorInfo(FAULT_9003);
-        Fault_Code = FAULT_9003;
         return FAULT_9003;
     }
     PATH = getSubStrings(path, &count);
     if (strcmp(dataModel->name, PATH[0]) != 0)
     {
         printErrorInfo(FAULT_9003);
-        Fault_Code = FAULT_9003;
         return FAULT_9003;
     }
 
@@ -789,7 +818,6 @@ int addObjectToDataModel(char *path, const unsigned char writable, const unsigne
 
     freePath(PATH, count);
     free(path);
-    Fault_Code = FAULT_0;
     return FAULT_0;
 }
 
@@ -843,14 +871,12 @@ int addParameterToDataModel(char *path, char *value, unsigned char writable, uns
     if (path[length - 1] == '.')
     {
         printErrorInfo(FAULT_9003);
-        Fault_Code = FAULT_9003;
         return FAULT_9003;
     }
     PATH = getSubStrings(path, &count);
     if (strcmp(dataModel->name, PATH[0]) != 0)
     {
         printErrorInfo(FAULT_9003);
-        Fault_Code = FAULT_9003;
         return FAULT_9003;
     }
 
@@ -868,7 +894,6 @@ int addParameterToDataModel(char *path, char *value, unsigned char writable, uns
 
     freePath(PATH, count);
     free(path);
-    Fault_Code = FAULT_0;
     return FAULT_0;
 }
 
@@ -911,7 +936,6 @@ void iterateDataModel(struct Object *obj, char *str)
     if (destination == NULL)
     {
         perror("Memory allocation failed");
-        Fault_Code = FAULT_9004;
         return;
     }
     destination[0] = '\0';
@@ -960,7 +984,6 @@ struct Object *checkObjectPath()
     if (index < count)
     {
         printErrorInfo(FAULT_9005);
-        Fault_Code = FAULT_9005;
         return NULL;
     }
     return obj;
@@ -975,18 +998,15 @@ struct Object *ObjectCanInstantiate()
     struct Object *obj = checkObjectPath(); // 检查路径是否正确并且获取该路径的最后一个Object对象
     if (!obj)
     {
-        Fault_Code = FAULT_9003;
         return NULL;
     }
     for (size_t i = 0; i < obj->NumOfObject; i++)
     {
         if (strcmp(obj->child_object[i].name, "{i}") == 0)
         {
-            Fault_Code = FAULT_0;
             return &(obj->child_object[i]);
         }
     }
-    Fault_Code = FAULT_9003;
     return NULL;
 }
 
@@ -999,7 +1019,6 @@ int checkParameterPath()
     struct Object *obj = checkObjectPath(); // 正确则会返回路径的最后一个Object对象
     if (!obj)
     {
-        Fault_Code = FAULT_9005;
         return FAULT_9005;
     }
 
@@ -1012,18 +1031,15 @@ int checkParameterPath()
         {
             if (obj->child_parameter[i].writable == WRITABLE)
             {
-                Fault_Code = FAULT_0;
                 return FAULT_0;
             }
             else
             {
-                Fault_Code = FAULT_9008;
                 return -1; // 不可set修改值
             }
         }
     }
     printErrorInfo(FAULT_9005);
-    Fault_Code = FAULT_9005;
     return FAULT_9005;
 }
 
@@ -1035,14 +1051,12 @@ int addObjectToData(char **instanceNumber)
     struct Object *obj = checkObjectPath();
     if (!obj)
     {
-        Fault_Code = FAULT_9005;
         return FAULT_9005;
     }
 
     obj = ObjectCanInstantiate(); // 可以实例化则会返回其下一级占位符{i}
     if (!obj)
     {
-        Fault_Code = FAULT_9005;
         return FAULT_9005;
     }
     // 在JSON中创建该实例
@@ -1080,7 +1094,6 @@ unsigned char getWritable(const char *path)
     if (index < count)
     {
         printErrorInfo(FAULT_9005);
-        Fault_Code = FAULT_9005;
         if (!isObject)
             count++;
         freePath(pathList, count);
@@ -1105,7 +1118,6 @@ unsigned char getWritable(const char *path)
         else
         {
             printErrorInfo(FAULT_9005);
-            Fault_Code = FAULT_9005;
             return -1;
         }
     }
@@ -1126,7 +1138,6 @@ bool init_root()
     if (file == NULL)
     {
         printf("fail to open file!");
-        Fault_Code = FAULT_9004;
         return 0;
     }
     fseek(file, 0, SEEK_END);
@@ -1161,7 +1172,6 @@ bool save_data()
     if (file == NULL)
     {
         printf("fail to open file!");
-        Fault_Code = FAULT_9004;
         return false;
     }
 
@@ -1203,7 +1213,6 @@ cJSON *createObjectPathToJsonData()
     save_data();
     if (index < count)
     {
-        Fault_Code = FAULT_9005;
         return NULL;
     }
     return node;
@@ -1302,14 +1311,12 @@ char *createObjectToJsonData(struct Object *placeholder)
     if (!placeholder)
     {
         printErrorInfo(FAULT_9005);
-        Fault_Code = FAULT_9005;
         return NULL;
     }
     cJSON *node = createObjectPathToJsonData(); // 获取要添加的Object的Json对象
     if (!node)
     {
         printErrorInfo(FAULT_9003);
-        Fault_Code = FAULT_9003;
         return NULL;
     }
     cJSON *target = cJSON_CreateObject(); // 创建空JSON对象
@@ -1409,7 +1416,6 @@ cJSON *getParameterJSON()
     if (index < count)
     {
         printErrorInfo(FAULT_9005);
-        Fault_Code = FAULT_9005;
     }
     return node;
 }
@@ -1545,7 +1551,6 @@ ParameterAttributeStruct **getAttributesFromJson(const char *parameter)
     if (!node)
     {
         printErrorInfo(FAULT_9005);
-        Fault_Code = FAULT_9005;
         return NULL;
     }
 
@@ -1626,7 +1631,6 @@ InformParameter **getInfoParamFromJson(const char *parameter)
     if (!node)
     {
         printErrorInfo(FAULT_9005);
-        Fault_Code = FAULT_9005;
         return NULL;
     }
 
@@ -1696,7 +1700,6 @@ void printAllParameters(cJSON *jsonObj, char *str)
     if (destination == NULL)
     {
         perror("Memory allocation failed");
-        Fault_Code = FAULT_9004;
         return;
     }
     destination[0] = '\0';
@@ -1739,7 +1742,6 @@ char **getSubStrings(const char *input, int *count)
     if (str == NULL)
     {
         perror("Memory allocation failed");
-        Fault_Code = FAULT_9004;
         exit(EXIT_FAILURE);
     }
 
@@ -1754,7 +1756,6 @@ char **getSubStrings(const char *input, int *count)
         if (substrings == NULL)
         {
             perror("Memory allocation failed");
-            Fault_Code = FAULT_9004;
             exit(EXIT_FAILURE);
         }
 
@@ -1762,7 +1763,6 @@ char **getSubStrings(const char *input, int *count)
         if (substrings[*count] == NULL)
         {
             perror("Memory allocation failed");
-            Fault_Code = FAULT_9004;
             exit(EXIT_FAILURE);
         }
 
@@ -1832,7 +1832,6 @@ int download_file_to_dir(const char *url, const char *username, const char *pass
     if (!filename)
     {
         fprintf(stderr, "Invalid URL.\n");
-        Fault_Code = FAULT_9003;
         return 0;
     }
     printf("url is %s", url);
@@ -1859,7 +1858,6 @@ int download_file_to_dir(const char *url, const char *username, const char *pass
             if (res != CURLE_OK)
             {
                 fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
-                Fault_Code = FAULT_9010;
                 fclose(fp);
                 curl_easy_cleanup(curl);
                 return 0; // 下载失败
@@ -1868,17 +1866,16 @@ int download_file_to_dir(const char *url, const char *username, const char *pass
         }
         curl_easy_cleanup(curl);
     }
-    Fault_Code = FAULT_0;
     return 1; // 下载成功
 }
 
 /**
  * 返回上一次命令的执行情况
  */
-void getExecutionStatus(int *status, int *fault)
-{
-    *fault = Fault_Code;
-    *status = exe_status;
-    Fault_Code = FAULT_0; // 默认无错
-    exe_status = 0;       // 默认不成功
-}
+// void getExecutionStatus(int *status, int *fault)
+// {
+//     *fault = Fault_Code;
+//     *status = exe_status;
+//     Fault_Code = FAULT_0; // 默认无错
+//     exe_status = 0;       // 默认不成功
+// }

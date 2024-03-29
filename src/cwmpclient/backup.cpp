@@ -663,7 +663,7 @@ int backup_extract_transfer_complete(tx::XMLElement *node, std::string &msg_out,
 	if (!b) return -1;
     n = findElementBylabel(tree, "CommandKey");
 	if (!n) return -1;
-	if (!b->GetText()) { //检查 XML 节点 b 的子节点是否存在、其类型是否为 MXML_OPAQUE 且值不为空
+	if (b->GetText()) { //检查 XML 节点 b 的子节点是否存在、其类型是否为 MXML_OPAQUE 且值不为空
 		val = b->GetText();
 		n->SetText(val);//创建一个新的 mxml_node_t 节点 n，将经过处理的值设置为这个新节点的值
 	}
@@ -678,7 +678,7 @@ int backup_extract_transfer_complete(tx::XMLElement *node, std::string &msg_out,
 
     b = findElementBylabel(node, "fault_string");
 	if (!b) return -1;
-	if (!b->GetText()) {
+	if (b->GetText()) {
         n = findElementBylabel(tree, "FaultString");
 		if (!n) return -1;
         val = b->GetText();

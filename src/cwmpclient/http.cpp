@@ -71,19 +71,27 @@ int http_client_init(void)
 /**
  * 处理HTTP GET请求响应的函数
 */
-static size_t http_get_response(char *buffer, size_t size, size_t rxed, char **msg_in)
+// static size_t http_get_response(char *buffer, size_t size, size_t rxed, char **msg_in)
+// {
+//     std::string response(*msg_in);
+//     response.append(buffer, size * rxed);
+//     char *new_msg = strdup(response.c_str());
+//     if (new_msg == nullptr)
+//     {
+//         free(*msg_in);
+//         return -1;
+//     }
+//     free(*msg_in);
+//     *msg_in = new_msg;
+//     return size * rxed;
+// }
+static size_t http_get_response(void *ptr, size_t size, size_t nmemb, void *userdata)
 {
-    std::string response(*msg_in);
-    response.append(buffer, size * rxed);
-    char *new_msg = strdup(response.c_str());
-    if (new_msg == nullptr)
-    {
-        free(*msg_in);
-        return -1;
-    }
-    free(*msg_in);
-    *msg_in = new_msg;
-    return size * rxed;
+	//参数userdata是存放数据的指针  其他三个获取内容
+	std::string *version = (std::string*)userdata;
+	version->append((char*)ptr, size * nmemb);
+
+	return (size * nmemb);
 }
 
 /**
@@ -129,7 +137,7 @@ int8_t http_send_message(std::string msg_out, std::string &msg_in)
 	// 设置 HTTP 请求头部
 	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, http_c.header_list);
 	// 设置接收到的数据存储位置
-	curl_easy_setopt(curl, CURLOPT_WRITEDATA, &reception);//设置接收到的 HTTP 响应消息
+	curl_easy_setopt(curl, CURLOPT_WRITEDATA, &msg_in);//设置接收到的 HTTP 响应消息
 	// 分配存储接收数据的内存
     
 	//使用 curl_easy_perform 函数执行 HTTP 请求，并将执行结果保存在 res 变量中
@@ -143,9 +151,9 @@ int8_t http_send_message(std::string msg_out, std::string &msg_in)
 	if (error_buf[0] != '\0')
 		Log(NAME, L_NOTICE, "LibCurl Error: %s\n", error_buf);
 
-    if(reception) msg_in.assign(reception);
-	//如果没有接收到消息，则释放 msg_in 所占用的内存
-    FREE(reception);
+    // if(reception) msg_in.assign(reception);
+	//如果没有接收到消息，则释放占用的内存
+    // FREE(reception);
 	
 	long httpCode = 0;
 	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);//获取 HTTP 状态码

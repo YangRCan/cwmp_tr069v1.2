@@ -270,7 +270,9 @@ void cwmpInfo::cwmp_download_launch(download *d, int delay)
 	Log(NAME, L_NOTICE, "start download url = %s, FileType = '%s', CommandKey = '%s'\n", d->download_url.c_str(), d->file_type.c_str(), d->key.c_str());
 	int code = FAULT_0;
 	std::string start_time(get_time());
-	downloadFile(d->download_url.c_str(), d->file_type.c_str(), d->file_size.c_str(), d->username.c_str(), d->password.c_str());
+
+	ExecuteResult rlt = downloadFile(d->download_url.c_str(), d->file_type.c_str(), d->file_size.c_str(), d->username.c_str(), d->password.c_str());
+
 	backup_remove_node(d->backup_node); // 从备份文件中移除该节点
 	this->downloads.remove(d);			// 从链表中删除该download节点
 	this->download_count--;
@@ -283,17 +285,17 @@ void cwmpInfo::cwmp_download_launch(download *d, int delay)
 	this->cwmp_add_event(EVENT_TRANSFER_COMPLETE, "", 0, EVENT_BACKUP);
 	this->cwmp_add_event(EVENT_M_DOWNLOAD, d->key, this->method_id, EVENT_BACKUP);
 
-	int status = 1, fault = FAULT_0;
-	getExecutionStatus(&status, &fault); // 获取执行下载后的结果状态
-	if (fault > 0)
+	// int status = 1, fault = FAULT_0;
+	// getExecutionStatus(&status, &fault); // 获取执行下载后的结果状态
+	if (rlt.fault_code > 0)
 	{ // 执行出错
-		code = fault;
+		code = rlt.fault_code;
 		Log(NAME, L_NOTICE, "download error: '%s'\n", fault_array[code].string);
 		backup_update_fault_transfer_complete(node, code);
 		this->cwmp_add_inform_timer(10);
 		return;
 	}
-	else if (status != 1)
+	else if (rlt.status != 1)
 	{ // 命令不成功
 		code = FAULT_9002;
 		Log(NAME, L_NOTICE, "download error: '%s'\n", fault_array[code].string);
@@ -301,11 +303,13 @@ void cwmpInfo::cwmp_download_launch(download *d, int delay)
 		this->cwmp_add_inform_timer(10);
 		return;
 	}
-	applyDownloadFile(d->file_type.c_str());
-	getExecutionStatus(&status, &fault); // 获取执行下载后的结果状态
-	if (fault > 0)
+
+	rlt = applyDownloadFile(d->file_type.c_str());
+	
+	// getExecutionStatus(&status, &fault); // 获取执行下载后的结果状态
+	if (rlt.fault_code > 0)
 	{
-		code = fault;
+		code = rlt.fault_code;
 		Log(NAME, L_NOTICE, "download error: '%s'\n", fault_array[code].string);
 		backup_update_fault_transfer_complete(node, code);
 		this->cwmp_add_inform_timer(10);
@@ -354,7 +358,7 @@ void cwmpInfo::cwmp_upload_launch(upload *ul, int delay)
 	Log(NAME, L_NOTICE, "start upload url = %s, FileType = '%s', CommandKey = '%s'\n", ul->upload_url.c_str(), ul->file_type.c_str(), ul->key.c_str());
 	int code = FAULT_0;
 	std::string start_time(get_time());
-	uploadFile(ul->upload_url.c_str(), ul->file_type.c_str(), ul->username.c_str(), ul->password.c_str());
+	ExecuteResult rlt = uploadFile(ul->upload_url.c_str(), ul->file_type.c_str(), ul->username.c_str(), ul->password.c_str());
 	backup_remove_node(ul->backup_node);
 	this->uploads.remove(ul);
 	this->upload_count--;
@@ -366,17 +370,17 @@ void cwmpInfo::cwmp_upload_launch(upload *ul, int delay)
 	}
 	this->cwmp_add_event(EVENT_TRANSFER_COMPLETE, "", 0, EVENT_BACKUP);
 	this->cwmp_add_event(EVENT_M_UPLOAD, ul->key, this->method_id, EVENT_BACKUP);
-	int status = 1, fault = FAULT_0;
-	getExecutionStatus(&status, &fault);
-	if (fault > 0)
+	// int status = 1, fault = FAULT_0;
+	// getExecutionStatus(&status, &fault);
+	if (rlt.fault_code > 0)
 	{ // 执行出错
-		code = fault;
+		code = rlt.fault_code;
 		Log(NAME, L_NOTICE, "upload error: '%s'\n", fault_array[code].string);
 		backup_update_fault_transfer_complete(node, code);
 		this->cwmp_add_inform_timer(10);
 		return;
 	}
-	else if (status != 1)
+	else if (rlt.status != 1)
 	{ // 命令不成功
 		code = FAULT_9002;
 		Log(NAME, L_NOTICE, "upload error: '%s'\n", fault_array[code].string);

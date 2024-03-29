@@ -83,6 +83,13 @@ struct Object
     void (*function)(); // 与该参数相关的函数
 };
 
+typedef struct
+{
+    int fault_code;//失败代码
+    bool status;//执行状态，1：成功，0：失败
+} ExecuteResult;
+
+
 // ParameterInfoStruct定义
 typedef struct
 {
@@ -114,16 +121,16 @@ void set_parameter_struct(Parameter *param, char *name, unsigned char writable, 
 
 // 具体操作对应的函数
 void getAllParameters();
-void setParameter(const char *path, const char *value, int verify);
-void getParameter(const char *path, char **str);
-void getParameterName(const char *path, const char *NextLevel, ParameterInfoStruct ***parameterList);
-int setParameterAttributes(ParameterAttributeStruct *parameterAttribute, const bool NotificationChange, const bool AccessListChange, int numOfAccess);
-ParameterAttributeStruct **getParameterAttributes(const char *const *ParameterNames, const int numOfParameter);
-void addObject(const char *path, char **instanceNumber);
-void deleteObject(const char *path);
-void downloadFile(const char *url, const char *fileType, const char *fileSize, const char *username, const char *password);
-void applyDownloadFile(const char *fileType);
-void uploadFile(const char *url, const char *fileType, const char *username, const char *password);
+ExecuteResult setParameter(const char *path, const char *value, int verify);
+ExecuteResult getParameter(const char *path, char **str);
+ExecuteResult getParameterName(const char *path, const char *NextLevel, ParameterInfoStruct ***parameterList);
+ExecuteResult setParameterAttributes(ParameterAttributeStruct *parameterAttribute, const bool NotificationChange, const bool AccessListChange, int numOfAccess);
+ParameterAttributeStruct **getParameterAttributes(const char *const *ParameterNames, const int numOfParameter, ExecuteResult *exe_rlt);
+ExecuteResult addObject(const char *path, char **instanceNumber);
+ExecuteResult deleteObject(const char *path);
+ExecuteResult downloadFile(const char *url, const char *fileType, const char *fileSize, const char *username, const char *password);
+ExecuteResult applyDownloadFile(const char *fileType);
+ExecuteResult uploadFile(const char *url, const char *fileType, const char *username, const char *password);
 InformParameter **getInformParameter();
 
 // 数据模型相关的函数
@@ -147,7 +154,6 @@ void SetParameterAttributesToJsonData(cJSON *node, Parameter *param, const char 
 char *createObjectToJsonData(struct Object *placeholder);
 void ObjectInstanceAttributeSupplementation(cJSON *node, struct Object *obj);
 int GetPlaceholderMaxNum(cJSON *node);
-// int deleteObjectInJson(cJSON *node);
 cJSON *getParameterJSON();
 ParameterInfoStruct **getChildFromJson(const char *path);
 void getDescendantsFromJson(const char *path, cJSON *object, ParameterInfoStruct ***List, int *const index);
@@ -160,9 +166,8 @@ char **getSubStrings(const char *input, int *count);
 char *concatenateStrings(const char *str1, const char *str2);
 bool isNumeric(const char *str);
 int download_file_to_dir(const char *url, const char *username, const char *password, const char *dir);
-void getExecutionStatus(int *status, int *fault);
+// void getExecutionStatus(int *status, int *fault);
 
-extern int Fault_Code;
 
 #if defined(__cplusplus)||defined(c_plusplus)
 }

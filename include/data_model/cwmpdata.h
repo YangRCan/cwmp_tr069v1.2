@@ -21,10 +21,12 @@
     "\t-----\treboot\n"                                                                                      \
     "\t-----\tinform [parameter|device_id]"
 
+#include "parameter.h"
+
 typedef struct
 {
     const char *key;
-    void (*function)();
+    ExecuteResult (*function)();
 } Operate;
 
 void init();

@@ -5,7 +5,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "parameter.h"
 #include "time_utils.h"
 #include "cwmpdata.h"
 
@@ -133,20 +132,21 @@ int main(int argc, char *argv[])
                 }
                 else if (argc == 4 && strcmp(operate, "set") == 0)
                 {
-                    operates[i].function(argv[2], argv[3], MUSTVERIFY);
-                    if(Fault_Code == 0) printf("Successfully modified\n");
+                    ExecuteResult rlt = operates[i].function(argv[2], argv[3], MUSTVERIFY);
+                    if(rlt.status) printf("Successfully modified\n");
                     break;
                 }
                 else if (argc == 3 && strcmp(operate, "add") == 0)
                 {
                     char *str;
-                    operates[i].function(argv[2], &str);
-                    printf("%s新建成功, 实例号为: %s", argv[2], str);
+                    ExecuteResult rlt = operates[i].function(argv[2], &str);
+                    if(rlt.status) printf("{ \" parameter \" : \" %s \"} New successfully created, instance number: %s", argv[2], str);
                     break;
                 }
                 else if (argc == 3 && strcmp(operate, "delete") == 0)
                 {
-                    operates[i].function(argv[2]);
+                    ExecuteResult rlt = operates[i].function(argv[2]);
+                    if(rlt.status) printf("{ \" parameter \" : \" %s \"} has been deleted ", argv[2]);
                     break;
                 }
                 else if (argc == 7 && strcmp(operate, "download") == 0)

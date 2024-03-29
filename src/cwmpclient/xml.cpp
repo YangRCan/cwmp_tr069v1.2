@@ -225,8 +225,6 @@ namespace
         std::string attributeValue;
         const char *c;
 
-        xml_free_ns(); // 释放 XML 命名空间相关的资源
-
         if (ns.cwmp.empty())
         { // 检查特定命名空间是否为 NULL，如果是，则在节点中查找特定属性值来重新设置该命名空间
             for (size_t i = 0; !cwmp_urls[i].empty(); i++)
@@ -236,6 +234,7 @@ namespace
                     if (attributeValue.assign(attribute->Value()) == cwmp_urls[i])
                     {
                         c = attribute->Name();
+                        break;
                     }
                 }
                 if (c && *(c + 5) == ':')
@@ -259,6 +258,7 @@ namespace
                 if (attributeValue.assign(attribute->Value()) == soap_enc_url)
                 {
                     c = attribute->Name();
+                    break;
                 }
             }
             if (c && (*(c + 5) == ':'))
@@ -274,6 +274,7 @@ namespace
                 if (attributeValue.assign(attribute->Value()) == xsd_url)
                 {
                     c = attribute->Name();
+                    break;
                 }
             }
             if (c && (*(c + 5) == ':'))
@@ -289,6 +290,7 @@ namespace
                 if (attributeValue.assign(attribute->Value()) == xsi_url)
                 {
                     c = attribute->Name();
+                    break;
                 }
             }
             if (c && (*(c + 5) == ':'))
@@ -543,6 +545,7 @@ int xml_parse_inform_response_message(std::string msg_in)
     if (!tree)
         return -1;
     // 对全局变量 ns 进行重建
+    xml_free_ns(); // 释放 XML 命名空间相关的资源
     if (xml_recreate_namespace(tree))
         return -1;
     // 查找名为 "Fault" 的节点
@@ -602,6 +605,7 @@ int xml_parse_get_rpc_methods_response_message(std::string msg_in)
 
 	tree = doc.RootElement();
 	if (!tree) return -1;
+    xml_free_ns(); // 释放 XML 命名空间相关的资源
 	if(xml_recreate_namespace(tree)) return -1;//重新创建 XML 树的命名空间
 
 	b = xml_find_node_by_env_type(tree, "Fault");//在 XML 树中查找具有特定Fault的节点
@@ -632,6 +636,7 @@ int xml_parse_transfer_complete_response_message(std::string msg_in)
     tree = doc.RootElement();
     if (!tree)
         return -1;
+    xml_free_ns(); // 释放 XML 命名空间相关的资源
     if (xml_recreate_namespace(tree))
         return -1; // 重新获取 XML 命名空间
     // 在XML树中查找 Fault 节点。如果找到了 Fault 节点，则进入条件判断
@@ -683,6 +688,7 @@ int xml_handle_message(std::string msg_in, std::string &msg_out)
 	tree_in = doc_int.RootElement();//使用 mxmlLoadString 函数解析输入的 XML 消息（msg_in），并将结果存储在 tree_in 中
 	if (!tree_in) return -1;
 
+    xml_free_ns(); // 释放 XML 命名空间相关的资源
 	if(xml_recreate_namespace(tree_in)) {//重新创建 XML 命名空间的函数, 失败返回-1, 成功返回0
 		code = FAULT_9003;
 		return handler_fault();
@@ -723,18 +729,18 @@ int xml_handle_message(std::string msg_in, std::string &msg_out)
 			return handler_fault();
 		}
 
-		if (c.find(ns.cwmp) != std::string::npos) {
+		if (c.find(ns.cwmp) == std::string::npos) {
 			code = FAULT_9003;
 			return handler_fault();
 		}
 
-        c = c.substr(ns_len);//拷贝冒号后面的标签
+        c = c.substr(ns_len + 1);//拷贝冒号后面的标签
 	} else {
 		code = FAULT_9003;
 		return handler_fault();
 	}
 	method = NULL;
-	Log(NAME, L_NOTICE, "received %s method from the ACS\n", c);
+	Log(NAME, L_NOTICE, "received %s method from the ACS\n", c.c_str());
 	for (i = 0; i < ARRAY_SIZE(rpc_methods); i++) {
 		if (c == rpc_methods[i].name) {
 			method = &rpc_methods[i];
