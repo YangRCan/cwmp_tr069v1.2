@@ -110,8 +110,8 @@ typedef struct
     char *data;
     char *name;
     char *type;
-} InformParameter;
-
+	int fault_code;
+} param_info;
 
 // 初始化对应的函数
 void init_dataModel();
@@ -122,8 +122,8 @@ void set_parameter_struct(Parameter *param, char *name, unsigned char writable, 
 // 具体操作对应的函数
 void getAllParameters();
 ExecuteResult setParameter(const char *path, const char *value, int verify);
-ExecuteResult getParameter(const char *path, char **str);
-ExecuteResult getParameterName(const char *path, const char *NextLevel, ParameterInfoStruct ***parameterList);
+ExecuteResult getParameter(const char *path, param_info ***param_list);
+ExecuteResult getParameterNames(const char *path, const char *NextLevel, ParameterInfoStruct ***parameterList);
 ExecuteResult setParameterAttributes(ParameterAttributeStruct *parameterAttribute, const bool NotificationChange, const bool AccessListChange, int numOfAccess);
 ParameterAttributeStruct **getParameterAttributes(const char *const *ParameterNames, const int numOfParameter, ExecuteResult *exe_rlt);
 ExecuteResult addObject(const char *path, char **instanceNumber);
@@ -131,7 +131,7 @@ ExecuteResult deleteObject(const char *path);
 ExecuteResult downloadFile(const char *url, const char *fileType, const char *fileSize, const char *username, const char *password);
 ExecuteResult applyDownloadFile(const char *fileType);
 ExecuteResult uploadFile(const char *url, const char *fileType, const char *username, const char *password);
-InformParameter **getInformParameter();
+param_info **getInformParameter();
 
 // 数据模型相关的函数
 int addObjectToDataModel(char *path, const unsigned char writable, const unsigned char limit, void (*function)());
@@ -147,7 +147,7 @@ unsigned char getWritable(const char *path);
 
 // 操作JSON数据文件的函数
 bool init_root();
-bool save_data();
+ExecuteResult save_data();
 cJSON *createObjectPathToJsonData();
 void createParameterPathToJsonData(Parameter *param, char *value);
 void SetParameterAttributesToJsonData(cJSON *node, Parameter *param, const char *value);
@@ -158,7 +158,8 @@ cJSON *getParameterJSON();
 ParameterInfoStruct **getChildFromJson(const char *path);
 void getDescendantsFromJson(const char *path, cJSON *object, ParameterInfoStruct ***List, int *const index);
 ParameterAttributeStruct **getAttributesFromJson(const char *parameter);
-InformParameter **getInfoParamFromJson(const char *parameter);
+param_info **getInfoParamFromJson(const char *parameter);
+param_info **getParameterlistByJsonNode(cJSON *node, const char *p_name);
 void printAllParameters(cJSON *jsonObj, char *str);
 
 // 类型转换或判断等相关的函数

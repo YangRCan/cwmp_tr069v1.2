@@ -39,21 +39,21 @@
 		},
 		"ManufacturerOUI":	{
 			"parameterType":	"string(6)",
-			"value":	"FFFFFF",
+			"value":	"X_UNIONMAN",
 			"writable":	"0",
 			"Notification":	"2",
 			"AccessList":	["Subscriber"]
 		},
 		"ProductClass":	{
 			"parameterType":	"string(:64)",
-			"value":	"unionman",
+			"value":	"STB",
 			"writable":	"0",
 			"Notification":	"2",
 			"AccessList":	["Subscriber"]
 		},
 		"SerialNumber":	{
 			"parameterType":	"string(:64)",
-			"value":	"FFFFFF123456",
+			"value":	"XUNION123456",
 			"writable":	"0",
 			"Notification":	"2",
 			"AccessList":	["Subscriber"]
@@ -74,7 +74,7 @@
 		},
 		"IP":	{
 			"parameterType":	"string",
-			"value":	"192.168.10.65",
+			"value":	"192.168.10.231",
 			"writable":	"0",
 			"Notification":	"2",
 			"AccessList":	["Subscriber"]

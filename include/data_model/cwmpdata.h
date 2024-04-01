@@ -7,8 +7,8 @@
 #define HELP_INFO                                                                                            \
     "-Help\n"                                                                                                \
     "Please use this program with parameters in the following format:\n"                                     \
-    "\t-----\tget value [parameter]\n"                                                                       \
-    "\t-----\tget name [object/parameter] NextLevel\n"                                                       \
+    "\t-----\tget value [parameter / object]\n"                                                              \
+    "\t-----\tget name [object / parameter] NextLevel\n"                                                     \
     "\t-----\tThe value of NextLevel can only be 0 or 1. 0 indicates that the object/parameter\n"            \
     "\tand all its child objects or parameters are listed. 1 indicates that all parameters\n"                \
     "\tincluded in the path are listed. If the path is empty and NextLevel is 1, only ROOT will be listed\n" \

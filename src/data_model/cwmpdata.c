@@ -103,14 +103,20 @@ int main(int argc, char *argv[])
                 }
                 else if (argc == 4 && strcmp(operate, "get") == 0 && strcmp(argv[2], "value") == 0)
                 {
-                    char **str = (char **)malloc(sizeof(char *));
-                    *str = NULL;
-                    operates[i].function(argv[3], str);
-                    if (*str != NULL)
-                        printf("{ \" parameter \" : \" %s \"}, { \" value \" : \"%s\"}\n", argv[3], *str);
-                    if (*str)
-                        free(*str);
-                    free(str);
+                    param_info *pf = NULL;
+                    param_info **pf_list = (param_info **)malloc(sizeof(param_info *));
+                    pf_list[0] = pf;
+                    operates[i].function(argv[3], &pf_list);
+                    int len = 0;
+                    while (pf_list[len] != NULL)
+                    {
+                        printf("{ \" parameter \" : \" %s \"}, { \" value \" : \"%s\"}, { \" type \" : \"%s\"}\n", pf_list[len]->name, pf_list[len]->data, pf_list[len]->type);
+                        free(pf_list[len]->name);
+                        free(pf_list[len]->data);
+                        free(pf_list[len]);
+                        len++;
+                    }
+                    free(pf_list);
                     break;
                 }
                 else if (argc > 3 && strcmp(operate, "get") == 0 && strcmp(argv[2], "name") == 0)
@@ -118,7 +124,7 @@ int main(int argc, char *argv[])
                     ParameterInfoStruct *parameterInfoStruct = NULL; // 结束标志
                     ParameterInfoStruct **List = (ParameterInfoStruct **)malloc(sizeof(ParameterInfoStruct *));
                     List[0] = parameterInfoStruct;
-                    argc == 4 ? getParameterName(NULL, argv[3], &List) : getParameterName(argv[3], argv[4], &List);
+                    argc == 4 ? getParameterNames(NULL, argv[3], &List) : getParameterNames(argv[3], argv[4], &List);
                     int len = 0;
                     while (List[len] != NULL)
                     {
@@ -132,8 +138,11 @@ int main(int argc, char *argv[])
                 }
                 else if (argc == 4 && strcmp(operate, "set") == 0)
                 {
-                    ExecuteResult rlt = operates[i].function(argv[2], argv[3], MUSTVERIFY);
-                    if(rlt.status) printf("Successfully modified\n");
+                    ExecuteResult rlt = operates[i].function(argv[2], argv[3], MUSTVERIFY);//只会修改全局的rootJSON树
+                    if(rlt.status) {
+                        save_data();//应用该修改，保存到持久化文件中
+                        printf("Successfully modified\n");
+                    }
                     break;
                 }
                 else if (argc == 3 && strcmp(operate, "add") == 0)
@@ -164,7 +173,7 @@ int main(int argc, char *argv[])
                 }
                 else if (argc >= 2 && strcmp(operate, "inform") == 0)
                 {
-                    InformParameter **inform_parameter = NULL;
+                    param_info **inform_parameter = NULL;
                     if (argc == 2 || strcmp(argv[2], "parameter") == 0)
                         inform_parameter = getInformParameter();
                     else if (argc > 2 && strcmp(argv[2], "device_id"))

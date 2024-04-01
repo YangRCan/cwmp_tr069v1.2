@@ -158,7 +158,6 @@ ExecuteResult setParameter(const char *path, const char *value, int verify)
     if (node)
     {
         cJSON_SetValuestring(cJSON_GetObjectItemCaseSensitive(node, "value"), value);
-        save_data();
         result.status = 1;
     }
     else
@@ -173,18 +172,12 @@ ExecuteResult setParameter(const char *path, const char *value, int verify)
  * 获取某属性名对应的配置的值，
  * 参数 path 指的是某对应参数的完整路径
  */
-ExecuteResult getParameter(const char *path, char **str)
+ExecuteResult getParameter(const char *path, param_info ***param_list)
 {
     ExecuteResult result;
     result.fault_code = FAULT_0;
     result.status = 0;
     int length = strlen(path);
-    if (path[length - 1] == '.')
-    {
-        printErrorInfo(FAULT_9005);
-        result.fault_code = FAULT_9005;
-        return result;
-    }
     PATH = getSubStrings(path, &count);
     if (strcmp(dataModel->name, PATH[0]) != 0)
     {
@@ -194,18 +187,18 @@ ExecuteResult getParameter(const char *path, char **str)
         return result;
     }
 
-    result.fault_code = checkParameterPath();
+    if (path[length - 1] == '.') result.fault_code = checkObjectPath() ? FAULT_0 : FAULT_9005;
+    else result.fault_code = checkParameterPath();
     if (result.fault_code > 0)
     {
         freePath(PATH, count);
         return result;
     }
 
-    cJSON *node = getParameterJSON();
+    cJSON *node = getParameterJSON();//获取路径的最后一个JSON节点
     if (node)
     {
-        node = cJSON_GetObjectItemCaseSensitive(node, "value");
-        *str = node->valuestring;
+        *param_list = getParameterlistByJsonNode(node, path);
         result.status = 1;
     }
     else
@@ -221,7 +214,7 @@ ExecuteResult getParameter(const char *path, char **str)
  * NextLevel 的值只能是 0 或 1。0 表示列出该对象参数及其所有子对象或参数。
  * 1 表示列出路径中包含的所有参数。 如果路径为空且NextLevel为1，则仅列出ROOT
  */
-ExecuteResult getParameterName(const char *path, const char *NextLevel, ParameterInfoStruct ***parameterList)
+ExecuteResult getParameterNames(const char *path, const char *NextLevel, ParameterInfoStruct ***parameterList)
 {
     ExecuteResult result;
     result.fault_code = FAULT_0;
@@ -773,9 +766,9 @@ ExecuteResult uploadFile(const char *url, const char *fileType, const char *user
 /**
  * 获取需要通知的参数
  */
-InformParameter **getInformParameter()
+param_info **getInformParameter()
 {
-    InformParameter **info_param = NULL;
+    param_info **info_param = NULL;
     info_param = getInfoParamFromJson("Device.");
     return info_param;
 }
@@ -1166,13 +1159,17 @@ bool init_root()
 /**
  * 将数据保存到文件中
  */
-bool save_data()
+ExecuteResult save_data()
 {
+    ExecuteResult result;
+    result.fault_code = FAULT_0;
+    result.status = 0;
     FILE *file = fopen(DATAFILE, "w");
     if (file == NULL)
     {
         printf("fail to open file!");
-        return false;
+        result.fault_code = FAULT_9002;
+        return result;
     }
 
     char *jsonString = cJSON_Print(rootJSON); // 转成字符串
@@ -1180,7 +1177,8 @@ bool save_data()
     fclose(file);                             // 关闭
     free(jsonString);                         // 释放字符串空间
 
-    return true;
+    result.status = 1;
+    return result;
 }
 
 /**
@@ -1611,9 +1609,9 @@ ParameterAttributeStruct **getAttributesFromJson(const char *parameter)
 }
 
 /**
- * 从JSON文件中获取上报参数，返回InformParameter指针数组
+ * 从JSON文件中获取上报参数，返回param_info指针数组
 */
-InformParameter **getInfoParamFromJson(const char *parameter)
+param_info **getInfoParamFromJson(const char *parameter)
 {
     int length = strlen(parameter), count = 0, index = 1;
     char **pathList = getSubStrings(parameter, &count);
@@ -1639,8 +1637,8 @@ InformParameter **getInfoParamFromJson(const char *parameter)
         int n = atoi(cJSON_GetObjectItemCaseSensitive(node, "Notification")->valuestring);
         if(n == 0) return NULL;
         // 是参数，直接封装返回
-        InformParameter **info_param = (InformParameter **)calloc(2, sizeof(InformParameter *));
-        info_param[0] = (InformParameter *)malloc(sizeof(InformParameter));
+        param_info **info_param = (param_info **)calloc(2, sizeof(param_info *));
+        info_param[0] = (param_info *)malloc(sizeof(param_info));
 
         info_param[0]->name = strdup(parameter); // 记得释放
         info_param[0]->type = strdup(cJSON_GetObjectItemCaseSensitive(node, "parameterType")->valuestring);
@@ -1652,7 +1650,7 @@ InformParameter **getInfoParamFromJson(const char *parameter)
     else
     {
         // 循环递归找参数
-        InformParameter **info_param = (InformParameter **)malloc(sizeof(InformParameter *));
+        param_info **info_param = (param_info **)malloc(sizeof(param_info *));
         int length = 0;
         info_param[0] = NULL;
         cJSON *child = node->child;
@@ -1664,11 +1662,11 @@ InformParameter **getInfoParamFromJson(const char *parameter)
             if (!cJSON_GetObjectItemCaseSensitive(child, "parameterType"))
                 strcat(newPath, ".");
 
-            InformParameter **info = getInfoParamFromJson(newPath);
+            param_info **info = getInfoParamFromJson(newPath);
             int len = 0;
             while (info && info[len])
                 len++;
-            info_param = (InformParameter **)realloc(info_param, (length + len + 1) * sizeof(InformParameter *));
+            info_param = (param_info **)realloc(info_param, (length + len + 1) * sizeof(param_info *));
             for (size_t i = 0; i < len; i++)
             {
                 info_param[length + i] = info[i];
@@ -1679,6 +1677,51 @@ InformParameter **getInfoParamFromJson(const char *parameter)
             child = child->next;
         }
         return info_param;
+    }
+}
+
+/**
+ * 获取json对象下的所有参数，若传入的node就是参数，着返回自身数据
+*/
+param_info **getParameterlistByJsonNode(cJSON *node, const char *p_name)
+{
+    param_info **pf = (param_info **)malloc(sizeof(param_info*));
+    pf[0] = NULL;
+    if(cJSON_GetObjectItemCaseSensitive(node, "parameterType")) {//完整参数路径
+        pf = (param_info **)realloc(pf, sizeof(param_info*) * 2);
+        pf[0] = (param_info *)malloc(sizeof(param_info));
+        pf[0]->name = strdup(p_name);
+        pf[0]->fault_code = FAULT_0;
+        pf[0]->type = strdup(cJSON_GetObjectItemCaseSensitive(node, "parameterType")->valuestring);
+        pf[0]->data = strdup(cJSON_GetObjectItemCaseSensitive(node, "value")->valuestring);
+        pf[1] = NULL;
+        return pf;
+    } else {//不完整
+        int length = 0;
+        cJSON *child = node->child;
+        while (child)
+        {
+            char *newPath = (char *)malloc(strlen(p_name) + strlen(child->string) + 2);
+            strcpy(newPath, p_name);
+            strcat(newPath, child->string);
+            if (!cJSON_GetObjectItemCaseSensitive(child, "parameterType"))
+                strcat(newPath, ".");
+
+            param_info **list = getParameterlistByJsonNode(child, newPath);
+            int len = 0;
+            while (list && list[len])
+                len++;
+            pf = (param_info **)realloc(pf, (length + len + 1) * sizeof(param_info *));
+            for (size_t i = 0; i < len; i++)
+            {
+                pf[length + i] = list[i];
+            }
+            pf[length + len] = NULL;
+            free(list);
+            length += len;
+            child = child->next;
+        }
+        return pf;
     }
 }
 

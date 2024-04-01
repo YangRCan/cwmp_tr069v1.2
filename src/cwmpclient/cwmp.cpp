@@ -280,7 +280,7 @@ void cwmpInfo::cwmp_download_launch(download *d, int delay)
 	std::string start_time(get_time());
 	ExecuteResult rlt = downloadFile(d->download_url.c_str(), d->file_type.c_str(), d->file_size.c_str(), d->username.c_str(), d->password.c_str());
 
-	this->inform_mtx.lock();
+	this->thread_mtx.lock();
 	backup_remove_node(d->backup_node); // 从备份文件中移除该节点
 	this->downloads.remove(d);			// 从链表中删除该download节点
 	this->download_count--;
@@ -288,6 +288,7 @@ void cwmpInfo::cwmp_download_launch(download *d, int delay)
 	if (!node)
 	{
 		delete d;
+		this->thread_mtx.unlock();
 		return;
 	}
 	this->cwmp_add_event(EVENT_TRANSFER_COMPLETE, "", 0, EVENT_BACKUP);
@@ -299,6 +300,7 @@ void cwmpInfo::cwmp_download_launch(download *d, int delay)
 		code = rlt.fault_code;
 		Log(NAME, L_NOTICE, "download error: '%s'\n", fault_array[code].string);
 		backup_update_fault_transfer_complete(node, code);
+		this->thread_mtx.unlock();
 		this->cwmp_add_inform_timer(10);
 		return;
 	}
@@ -307,26 +309,28 @@ void cwmpInfo::cwmp_download_launch(download *d, int delay)
 		code = FAULT_9002;
 		Log(NAME, L_NOTICE, "download error: '%s'\n", fault_array[code].string);
 		backup_update_fault_transfer_complete(node, code);
+		this->thread_mtx.unlock();
 		this->cwmp_add_inform_timer(10);
 		return;
 	}
-	this->inform_mtx.unlock();
+	this->thread_mtx.unlock();
 
 	rlt = applyDownloadFile(d->file_type.c_str());
 	
-	this->inform_mtx.lock();
+	this->thread_mtx.lock();
 	// getExecutionStatus(&status, &fault); // 获取执行下载后的结果状态
 	if (rlt.fault_code > 0)
 	{
 		code = rlt.fault_code;
 		Log(NAME, L_NOTICE, "download error: '%s'\n", fault_array[code].string);
 		backup_update_fault_transfer_complete(node, code);
+		this->thread_mtx.unlock();
 		this->cwmp_add_inform_timer(10);
 		return;
 	}
 	backup_update_complete_time_transfer_complete(node);
+	this->thread_mtx.unlock();
 	this->cwmp_add_inform_timer(10);
-	this->inform_mtx.unlock();
 }
 
 /**
@@ -370,7 +374,7 @@ void cwmpInfo::cwmp_upload_launch(upload *ul, int delay)
 	std::string start_time(get_time());
 	ExecuteResult rlt = uploadFile(ul->upload_url.c_str(), ul->file_type.c_str(), ul->username.c_str(), ul->password.c_str());
 
-	this->inform_mtx.lock();
+	this->thread_mtx.lock();
 	backup_remove_node(ul->backup_node);
 	this->uploads.remove(ul);
 	this->upload_count--;
@@ -378,6 +382,7 @@ void cwmpInfo::cwmp_upload_launch(upload *ul, int delay)
 	if (!node)
 	{
 		delete ul;
+		this->thread_mtx.unlock();
 		return;
 	}
 	this->cwmp_add_event(EVENT_TRANSFER_COMPLETE, "", 0, EVENT_BACKUP);
@@ -389,6 +394,7 @@ void cwmpInfo::cwmp_upload_launch(upload *ul, int delay)
 		code = rlt.fault_code;
 		Log(NAME, L_NOTICE, "upload error: '%s'\n", fault_array[code].string);
 		backup_update_fault_transfer_complete(node, code);
+		this->thread_mtx.unlock();
 		this->cwmp_add_inform_timer(10);
 		return;
 	}
@@ -397,12 +403,13 @@ void cwmpInfo::cwmp_upload_launch(upload *ul, int delay)
 		code = FAULT_9002;
 		Log(NAME, L_NOTICE, "upload error: '%s'\n", fault_array[code].string);
 		backup_update_fault_transfer_complete(node, code);
+		this->thread_mtx.unlock();
 		this->cwmp_add_inform_timer(10);
 		return;
 	}
 	backup_update_complete_time_transfer_complete(node);
+	this->thread_mtx.unlock();
 	this->cwmp_add_inform_timer(10);
-	this->inform_mtx.unlock();
 }
 
 /**
@@ -501,10 +508,19 @@ void cwmpInfo::cwmp_do_inform_retry(int delaySeconds)
 	this->retry_inform = true; // 在对象中标明正在尝试重启会话
 	// 等待指定秒数
 	std::this_thread::sleep_for(std::chrono::seconds(delaySeconds));
-	if (this->retry_inform)
+	if (!this->inform_mtx.try_lock())
+	{
+		// 获取锁失败，执行退出逻辑
+		Log(NAME, L_NOTICE, "Failed to acquire lock. Exiting thread.\n");
+		return;
+	}
+	if (this->retry_inform) {
+		this->inform_mtx.unlock();
 		return; // 如果重试标志被取消了，则不重启会话
+	}
 	this->retry_inform = false;
 	cwmp_inform();
+	this->inform_mtx.unlock();
 }
 
 /**

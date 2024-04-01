@@ -141,6 +141,7 @@ private:
 	bool hold_requests;
 	int netlink_sock[2];
 	std::atomic<bool> retry_inform;
+	std::mutex thread_mtx;//线程锁，防止多线程对临界资源的同时操作
 	std::mutex inform_mtx;//给判断和修改isInfroming变量时上锁
 	std::atomic<bool> isInfroming;//当前是否正在上报，同一时刻不能同时有多个上报线程
 	std::atomic<int> inform_num;//用于保证不重复上报，新建定期上报线程就得+1，值不大于100

@@ -105,9 +105,8 @@ struct cwmp_namespaces
 */
 struct rpc_method {
 	const std::string name;
-	int (*handler)(tinyxml2::XMLElement *body_in, tinyxml2::XMLElement *tree_in, tinyxml2::XMLElement *tree_out);
+	int (*handler)(tinyxml2::XMLElement *body_in, tinyxml2::XMLElement *tree_in, tinyxml2::XMLElement *tree_out, tinyxml2::XMLDocument &doc_out);
 };
-
 
 int xml_prepare_inform_message(std::string &msg_out);
 int xml_parse_inform_response_message(std::string msg_in);
