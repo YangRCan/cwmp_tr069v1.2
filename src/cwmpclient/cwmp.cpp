@@ -226,7 +226,14 @@ event *cwmpInfo::cwmp_add_event(int code, std::string key, int method_id, int ba
 void cwmpInfo::cwmp_remove_event(int remove_policy, int method_id)
 {
 	this->events.remove_if([remove_policy, method_id](event *e)
-						   { return (event_code_array[e->code].remove_policy & remove_policy) && e->method_id == method_id; });
+	{
+		if((event_code_array[e->code].remove_policy & remove_policy) && e->method_id == method_id)
+		{
+			backup_remove_node(e->backup_node);
+			return true;
+		}
+		return false;
+	});
 }
 
 /**
@@ -268,11 +275,12 @@ void cwmpInfo::cwmp_download_launch(download *d, int delay)
 	}
 	d->state = UD_EXECUTING;
 	Log(NAME, L_NOTICE, "start download url = %s, FileType = '%s', CommandKey = '%s'\n", d->download_url.c_str(), d->file_type.c_str(), d->key.c_str());
+
 	int code = FAULT_0;
 	std::string start_time(get_time());
-
 	ExecuteResult rlt = downloadFile(d->download_url.c_str(), d->file_type.c_str(), d->file_size.c_str(), d->username.c_str(), d->password.c_str());
 
+	this->inform_mtx.lock();
 	backup_remove_node(d->backup_node); // 从备份文件中移除该节点
 	this->downloads.remove(d);			// 从链表中删除该download节点
 	this->download_count--;
@@ -284,7 +292,6 @@ void cwmpInfo::cwmp_download_launch(download *d, int delay)
 	}
 	this->cwmp_add_event(EVENT_TRANSFER_COMPLETE, "", 0, EVENT_BACKUP);
 	this->cwmp_add_event(EVENT_M_DOWNLOAD, d->key, this->method_id, EVENT_BACKUP);
-
 	// int status = 1, fault = FAULT_0;
 	// getExecutionStatus(&status, &fault); // 获取执行下载后的结果状态
 	if (rlt.fault_code > 0)
@@ -303,9 +310,11 @@ void cwmpInfo::cwmp_download_launch(download *d, int delay)
 		this->cwmp_add_inform_timer(10);
 		return;
 	}
+	this->inform_mtx.unlock();
 
 	rlt = applyDownloadFile(d->file_type.c_str());
 	
+	this->inform_mtx.lock();
 	// getExecutionStatus(&status, &fault); // 获取执行下载后的结果状态
 	if (rlt.fault_code > 0)
 	{
@@ -317,6 +326,7 @@ void cwmpInfo::cwmp_download_launch(download *d, int delay)
 	}
 	backup_update_complete_time_transfer_complete(node);
 	this->cwmp_add_inform_timer(10);
+	this->inform_mtx.unlock();
 }
 
 /**
@@ -359,6 +369,8 @@ void cwmpInfo::cwmp_upload_launch(upload *ul, int delay)
 	int code = FAULT_0;
 	std::string start_time(get_time());
 	ExecuteResult rlt = uploadFile(ul->upload_url.c_str(), ul->file_type.c_str(), ul->username.c_str(), ul->password.c_str());
+
+	this->inform_mtx.lock();
 	backup_remove_node(ul->backup_node);
 	this->uploads.remove(ul);
 	this->upload_count--;
@@ -390,6 +402,7 @@ void cwmpInfo::cwmp_upload_launch(upload *ul, int delay)
 	}
 	backup_update_complete_time_transfer_complete(node);
 	this->cwmp_add_inform_timer(10);
+	this->inform_mtx.unlock();
 }
 
 /**

@@ -62,8 +62,6 @@ int http_client_init(void)
     if (!config->acs->ssl_verify)
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
 
-    // 设置输出文件，将日志输出到文件中
-
     Log(NAME, L_NOTICE, "configured acs url %s\n", http_c.url.c_str());
     return 0; // 初始化成功
 }
@@ -209,7 +207,7 @@ void http_client_exit(void)
 	    curl_easy_cleanup(curl);
 		curl = NULL;
 	}
-	curl_global_cleanup();
+	// curl_global_cleanup();//不是线程安全的
 
 	if(remove(fc_cookies) < 0)//尝试删除 fc_cookies 文件。如果文件存在并且删除成功，则返回0
 		Log(NAME, L_NOTICE, "can't remove file %s\n", fc_cookies);

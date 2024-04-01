@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <getopt.h>
+#include <curl/curl.h>
 
 #include <chrono>
 #include <thread>
@@ -86,6 +87,7 @@ int main(int argc, char **argv)
     if (!cwmp)
         return -1; // 分配失败
 
+    curl_global_init(CURL_GLOBAL_ALL);//多线程不安全，只在主函数调用一次
     backup_init();              // 从备份文件中加载uploads、downloads、events .etc.
     config_load();
 
