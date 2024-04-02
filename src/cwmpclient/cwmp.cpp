@@ -919,13 +919,13 @@ void cwmpInfo::cwmp_handle_end_session(void)
 	{
 		Log(NAME, L_NOTICE, "end session: factory reset\n");
 		do_factory_reset();//恢复出厂
-		exit(EXIT_SUCCESS);
+		// exit(EXIT_SUCCESS);
 	}
 	if (this->end_session & ENDS_REBOOT)
 	{
 		Log(NAME, L_NOTICE, "end session: reboot\n");
 		do_reboot();//重启
-		exit(EXIT_SUCCESS);
+		// exit(EXIT_SUCCESS);
 	}
 	if (this->end_session & ENDS_RELOAD_CONFIG)
 	{

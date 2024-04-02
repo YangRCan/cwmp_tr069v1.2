@@ -394,7 +394,7 @@ namespace
             const char *name1 = element->FirstChildElement("Name")->GetText();
             if (!name1)
                 continue;
-            for (tx::XMLElement *n = element->NextSiblingElement(); n; n->NextSiblingElement())
+            for (tx::XMLElement *n = element->NextSiblingElement(); n; n = n->NextSiblingElement())
             {
                 const char *name2 = n->FirstChildElement("Name")->GetText();
                 if (!strcmp(name1, name2))

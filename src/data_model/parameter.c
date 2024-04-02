@@ -782,7 +782,7 @@ ExecuteResult do_factory_reset()
     ExecuteResult rlt;
     rlt.fault_code = FAULT_0;
     rlt.status = 1;
-    printf("恢复出厂！");
+    printf("factory_reset!");
 #if defined(__ANDROID__)
     system("echo --wipe_data >> /cache/recovery/command");
     system("echo --wipe_cache >> /cache/recovery/command");
