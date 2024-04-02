@@ -2,12 +2,15 @@
  * @Copyright : Yangrongcan
  */
 #include <iostream>
+#include <regex>
+
 #include "tinyxml2.h"
 #include "cwmpclient.h"
 #include "cwmp.h"
 #include "time_tool.h"
 #include "parameter.h"
 #include "faultCode.h"
+#include "backup.h"
 #include "log.h"
 #include "xml.h"
 
@@ -27,7 +30,7 @@ namespace
         ""};
 
     cwmp_namespaces ns;
-    
+
     int xml_get_rpc_methods(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out, tx::XMLDocument &doc_out);
     int xml_set_parameter_values(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out, tx::XMLDocument &doc_out);
     int xml_get_parameter_values(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out, tx::XMLDocument &doc_out);
@@ -375,22 +378,29 @@ namespace
 
     /**
      * 在ParameterList结构中，查询是否有重复的参数条目
-    */
-    int xml_check_duplicated_parameter(tx::XMLElement *tree){
+     */
+    int xml_check_duplicated_parameter(tx::XMLElement *tree)
+    {
         tx::XMLElement *node = findElementBylabel(tree, "ParameterList");
-        if(!node) return 0;
+        if (!node)
+            return 0;
         node = findElementBylabel(node, "ParameterValueStruct");
-        if(!node) return 0;
+        if (!node)
+            return 0;
 
         // 遍历根节点下的所有节点
-        for (tx::XMLElement* element = node; element; element = element->NextSiblingElement()) {
+        for (tx::XMLElement *element = node; element; element = element->NextSiblingElement())
+        {
             const char *name1 = element->FirstChildElement("Name")->GetText();
-            if(!name1) continue;
-            for(tx::XMLElement *n = element->NextSiblingElement(); n; n->NextSiblingElement()) {
+            if (!name1)
+                continue;
+            for (tx::XMLElement *n = element->NextSiblingElement(); n; n->NextSiblingElement())
+            {
                 const char *name2 = n->FirstChildElement("Name")->GetText();
-                if(!strcmp(name1, name2)) {
+                if (!strcmp(name1, name2))
+                {
                     Log(NAME, L_NOTICE, "Fault in the param: %s , Fault code: 9003 <parameter duplicated>\n", name2);
-                    return 1;//有重复参数
+                    return 1; // 有重复参数
                 }
             }
         }
@@ -399,39 +409,46 @@ namespace
 
     /**
      * 构造fault xml
-    */
+     */
     tx::XMLElement *xml_create_generic_fault_message(tx::XMLElement *body, int code, tx::XMLDocument &doc)
     {
         tx::XMLElement *b, *t;
         b = doc.NewElement("soap_env:Fault");
-        if(!b) return NULL;
+        if (!b)
+            return NULL;
         body->InsertEndChild(b);
 
         t = doc.NewElement("faultcode");
-        if(!t) return NULL;
+        if (!t)
+            return NULL;
         t->SetText(fault_array[code].type);
         b->InsertEndChild(t);
 
         t = doc.NewElement("faultstring");
-        if(!t) return NULL;
+        if (!t)
+            return NULL;
         t->SetText("CWMP fault");
         b->InsertEndChild(t);
 
         t = doc.NewElement("detail");
-        if(!t) return NULL;
+        if (!t)
+            return NULL;
         b->InsertEndChild(t);
 
-        b = doc.NewElement("cwmp:Fault");//返回的是这个指针
-        if(!b) return NULL;
+        b = doc.NewElement("cwmp:Fault"); // 返回的是这个指针
+        if (!b)
+            return NULL;
         t->InsertEndChild(b);
 
         t = doc.NewElement("FaultCode");
-        if(!t) return NULL;
+        if (!t)
+            return NULL;
         t->SetText(fault_array[code].code);
         b->InsertEndChild(t);
 
         t = doc.NewElement("FaultString");
-        if(!t) return NULL;
+        if (!t)
+            return NULL;
         t->SetText(fault_array[code].string);
         b->InsertEndChild(t);
 
@@ -441,7 +458,7 @@ namespace
 
     /**
      * 构造SetParameterValue错误响应
-    */
+     */
     int xml_create_set_parameter_value_fault_message(tx::XMLElement *body, int code, tx::XMLDocument &doc, std::list<param_info> &fp_list)
     {
         struct external_parameter *external_parameter;
@@ -452,24 +469,30 @@ namespace
         if (!n)
             return -1;
 
-        for(auto it = fp_list.begin(); it != fp_list.end(); it++) {
-            if (it->fault_code > 0) {
+        for (auto it = fp_list.begin(); it != fp_list.end(); it++)
+        {
+            if (it->fault_code > 0)
+            {
                 b = doc.NewElement("SetParameterValuesFault");
-                if (!b) return -1;
+                if (!b)
+                    return -1;
                 n->InsertEndChild(b);
 
                 t = doc.NewElement("ParameterName");
-                if (!t) return -1;
+                if (!t)
+                    return -1;
                 t->SetText(it->name);
                 b->InsertEndChild(t);
 
                 t = doc.NewElement("FaultCode");
-                if (!t) return -1;
+                if (!t)
+                    return -1;
                 t->SetText(fault_array[it->fault_code].code);
                 b->InsertEndChild(t);
 
                 t = doc.NewElement("FaultString");
-                if (!t) return -1;
+                if (!t)
+                    return -1;
                 t->SetText(fault_array[it->fault_code].string);
                 b->InsertEndChild(t);
             }
@@ -480,46 +503,53 @@ namespace
 
     /**
      * GetRPCMethods
-    */
+     */
     int xml_get_rpc_methods(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out, tx::XMLDocument &doc_out)
     {
         tx::XMLElement *b1, *b2, *method_list;
-        
+
         b1 = findElementBylabel(tree_out, "soap_env:Body");
-        if(!b1) return -1;
+        if (!b1)
+            return -1;
 
         b2 = doc_out.NewElement("cwmp:GetRPCMethodsResponse");
-        if(!b2) return -1;
+        if (!b2)
+            return -1;
         b1->InsertEndChild(b2);
 
         method_list = doc_out.NewElement("MethodList");
-        if(!method_list) return -1;
+        if (!method_list)
+            return -1;
         b2->InsertEndChild(method_list);
 
-        for (size_t i = 0; i < ARRAY_SIZE(rpc_methods); i++) {
+        for (size_t i = 0; i < ARRAY_SIZE(rpc_methods); i++)
+        {
             b1 = doc_out.NewElement("string");
-			if (!b1) return -1;
+            if (!b1)
+                return -1;
             b1->SetText(rpc_methods[i].name.c_str());
             method_list->InsertEndChild(b1);
-		}
+        }
         std::string attr_value = "xsd:string[" + std::to_string(ARRAY_SIZE(rpc_methods)) + "]";
         method_list->SetAttribute("soap_enc:arrayType", attr_value.c_str());
 
-		Log(NAME, L_NOTICE, "send GetRPCMethodsResponse to the ACS\n");
+        Log(NAME, L_NOTICE, "send GetRPCMethodsResponse to the ACS\n");
         return 0;
     }
 
     /**
      * SetParameterValues
-    */
+     */
     int xml_set_parameter_values(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out, tx::XMLDocument &doc_out)
     {
         std::list<param_info> fp_list;
-	    int code = FAULT_9002;
+        int code = FAULT_9002;
         tx::XMLElement *body_out = findElementBylabel(tree_out, "soap_env:Body");
-        if(body_out == nullptr) return -1;
+        if (body_out == nullptr)
+            return -1;
 
-        if (xml_check_duplicated_parameter(body_in)) {
+        if (xml_check_duplicated_parameter(body_in))
+        {
             code = FAULT_9003;
             xml_create_set_parameter_value_fault_message(body_out, code, doc_out, fp_list);
             return 0;
@@ -528,15 +558,17 @@ namespace
         tx::XMLElement *b = findElementBylabel(body_in, "ParameterValueStruct");
         const char *name = NULL, *value = NULL;
         bool exe_success = true;
-        for(tx::XMLElement *n = b; n; n->NextSiblingElement())
+        for (tx::XMLElement *n = b; n; n->NextSiblingElement())
         {
             name = n->FirstChildElement("Name")->GetText();
             value = n->FirstChildElement("Value")->GetText();
-            if(name && value) {
-                ExecuteResult rlt = setParameter(name, value, NOVERIFY);//存在内存中，未写入文件
-                if(rlt.fault_code) {
-			        Log(NAME, L_NOTICE, "Fault in the param: %s , Fault code: %s\n", name, fault_array[rlt.fault_code].code);
-		            code = FAULT_9003;
+            if (name && value)
+            {
+                ExecuteResult rlt = setParameter(name, value, NOVERIFY); // 存在内存中，未写入文件
+                if (rlt.fault_code)
+                {
+                    Log(NAME, L_NOTICE, "Fault in the param: %s , Fault code: %s\n", name, fault_array[rlt.fault_code].code);
+                    code = FAULT_9003;
                     bool exe_success = false;
                     param_info fp;
                     fp.name = strdup(name);
@@ -546,60 +578,68 @@ namespace
             }
             name = value = NULL;
         }
-        
+
         tx::XMLElement *pk = findElementBylabel(body_in, "ParameterKey");
         const char *param_key = pk->GetText();
         ExecuteResult rlt;
-        if(!param_key) rlt = setParameter("Device.ManagementServer.ParameterKey", "", NOVERIFY);
-        else rlt = setParameter("Device.ManagementServer.ParameterKey", param_key, NOVERIFY);
-        if(rlt.fault_code) {
+        if (!param_key)
+            rlt = setParameter("Device.ManagementServer.ParameterKey", "", NOVERIFY);
+        else
+            rlt = setParameter("Device.ManagementServer.ParameterKey", param_key, NOVERIFY);
+        if (rlt.fault_code)
+        {
             code = FAULT_9003;
             bool exe_success = false;
             Log(NAME, L_NOTICE, "Fault in the param: Device.ManagementServer.ParameterKey , Fault code: %s\n", name, fault_array[rlt.fault_code].code);
         }
         rlt = save_data();
-        if(exe_success == false || rlt.status == 0) {
+        if (exe_success == false || rlt.status == 0)
+        {
             xml_create_set_parameter_value_fault_message(body_out, code, doc_out, fp_list);
             return 0;
         }
         tx::XMLElement *rsp = doc_out.NewElement("cwmp:SetParameterValuesResponse");
-        if(!rsp) return -1;
+        if (!rsp)
+            return -1;
         body_out->InsertEndChild(rsp);
 
         tx::XMLElement *status = doc_out.NewElement("Status");
-        if(!b) return -1;
+        if (!b)
+            return -1;
         rsp->InsertEndChild(status);
         status->SetText(std::to_string(rlt.status).c_str());
 
-	    Log(NAME, L_NOTICE, "send SetParameterValuesResponse to the ACS\n");
+        Log(NAME, L_NOTICE, "send SetParameterValuesResponse to the ACS\n");
         return 0;
     }
 
     /**
      * GetParameterValues
-    */
+     */
     int xml_get_parameter_values(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out, tx::XMLDocument &doc_out)
     {
         tx::XMLElement *n, *parameter_list, *b, *body_out, *t;
-	    int counter = 0, code = FAULT_9002;
+        int counter = 0, code = FAULT_9002;
         param_info *pf = NULL;
         param_info **pf_list = (param_info **)malloc(sizeof(param_info *));
         pf_list[0] = pf;
-        std::list<param_info*> param_list;
+        std::list<param_info *> param_list;
 
         body_out = findElementBylabel(tree_out, "soap_env:Body");
-        if(!body_out) return -1;
+        if (!body_out)
+            return -1;
 
         ExecuteResult rlt;
         b = findElementBylabel(body_in, "string");
-        for(tx::XMLElement *node = b; node; node = node->NextSiblingElement())
+        for (tx::XMLElement *node = b; node; node = node->NextSiblingElement())
         {
             const char *name = node->GetText();
             rlt = getParameter(name, &pf_list);
-            if(rlt.fault_code) {
-			    Log(NAME, L_NOTICE, "Fault in the param: %s , Fault code: %s\n", name, fault_array[rlt.fault_code].code);
+            if (rlt.fault_code)
+            {
+                Log(NAME, L_NOTICE, "Fault in the param: %s , Fault code: %s\n", name, fault_array[rlt.fault_code].code);
                 code = rlt.fault_code;
-	            xml_create_generic_fault_message(body_out, code, doc_out);
+                xml_create_generic_fault_message(body_out, code, doc_out);
                 return 0;
             }
 
@@ -611,44 +651,49 @@ namespace
             }
         }
         free(pf_list);
-        
+
         n = doc_out.NewElement("cwmp:GetParameterValuesResponse");
-        if(!n) return -1;
+        if (!n)
+            return -1;
         body_out->InsertEndChild(n);
         parameter_list = doc_out.NewElement("ParameterList");
-        if (!parameter_list) return -1;
+        if (!parameter_list)
+            return -1;
         n->InsertEndChild(parameter_list);
 
-        for(auto it = param_list.begin(); it != param_list.end(); it++)
+        for (auto it = param_list.begin(); it != param_list.end(); it++)
         {
             n = doc_out.NewElement("ParameterValueStruct");
-            if(!n) return -1;
+            if (!n)
+                return -1;
             parameter_list->InsertEndChild(n);
 
             t = doc_out.NewElement("Name");
-            if(!t) return -1;
+            if (!t)
+                return -1;
             t->SetText((*it)->name);
             n->InsertEndChild(t);
 
             t = doc_out.NewElement("Value");
-            if(!t) return -1;
+            if (!t)
+                return -1;
             t->SetAttribute("xsi:type", (*it)->type);
             t->SetText((*it)->data ? (*it)->data : "");
             n->InsertEndChild(t);
 
-            counter++;//计数
+            counter++; // 计数
         }
 
         std::string c = "cwmp:ParameterValueStruct[" + std::to_string(counter) + "]";
         parameter_list->SetAttribute("soap_enc:arrayType", c.c_str());
 
-	    Log(NAME, L_NOTICE, "send GetParameterValuesResponse to the ACS\n");
+        Log(NAME, L_NOTICE, "send GetParameterValuesResponse to the ACS\n");
         return 0;
     }
 
     /**
      * GetParameterNames
-    */
+     */
     int xml_get_parameter_names(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out, tx::XMLDocument &doc_out)
     {
         tx::XMLElement *n, *parameter_list, *body_out, *t;
@@ -659,46 +704,56 @@ namespace
         List[0] = parameterInfoStruct;
 
         body_out = findElementBylabel(tree_out, "soap_env:Body");
-        if(!body_out) return -1;
+        if (!body_out)
+            return -1;
 
         n = findElementBylabel(body_in, "NextLevel");
         next_level = n->GetText();
         n = findElementBylabel(body_in, "ParameterPath");
         ExecuteResult rlt;
-        if(n->GetText()) {
+        if (n->GetText())
+        {
             rlt = getParameterNames(n->GetText(), next_level, &List);
-        } else {
+        }
+        else
+        {
             rlt = getParameterNames(NULL, next_level, &List);
         }
-        if(rlt.fault_code) {
+        if (rlt.fault_code)
+        {
             Log(NAME, L_NOTICE, "Fault in the param: %s , Fault code: %s\n", n->GetText() ? n->GetText() : "NULL", fault_array[rlt.fault_code].code);
             code = rlt.fault_code;
-	        xml_create_generic_fault_message(body_out, code, doc_out);
+            xml_create_generic_fault_message(body_out, code, doc_out);
             return 0;
         }
 
         n = doc_out.NewElement("cwmp:GetParameterNamesResponse");
-        if(!n) return -1;
+        if (!n)
+            return -1;
         body_out->InsertEndChild(n);
 
         parameter_list = doc_out.NewElement("ParameterList");
-        if(!parameter_list) return -1;
+        if (!parameter_list)
+            return -1;
         n->InsertEndChild(parameter_list);
 
         while (List[counter] != NULL)
         {
             n = doc_out.NewElement("ParameterInfoStruct");
-            if(!n) return -1;
+            if (!n)
+                return -1;
             parameter_list->InsertEndChild(n);
 
             t = doc_out.NewElement("Name");
-            if(!t) return -1;
+            if (!t)
+                return -1;
             t->SetText(List[counter]->name);
             n->InsertEndChild(t);
 
             t = doc_out.NewElement("Writable");
-            if(!t) return -1;
-            int writable = List[counter]->writable;//隐式类型转换
+            if (!t)
+                return -1;
+            int writable = List[counter]->writable; // 隐式类型转换
             t->SetText(std::to_string(writable).c_str());
             n->InsertEndChild(t);
 
@@ -711,74 +766,692 @@ namespace
         std::string c = "cwmp:ParameterInfoStruct[" + std::to_string(counter) + "]";
         parameter_list->SetAttribute("soap_enc:arrayType", c.c_str());
 
-	    Log(NAME, L_NOTICE, "send GetParameterNamesResponse to the ACS\n");
+        Log(NAME, L_NOTICE, "send GetParameterNamesResponse to the ACS\n");
         return 0;
     }
 
     /**
      * GetParameterAttributes
-    */
-    int xml_set_parameter_attributes(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out, tx::XMLDocument &doc_out)
+     */
+    int xml_get_parameter_attributes(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out, tx::XMLDocument &doc_out)
     {
         tx::XMLElement *n, *parameter_list, *body_out, *t;
-	    int counter = 0, code = FAULT_9002;
-        
+        int counter = 0, code = FAULT_9002;
+
+        body_out = findElementBylabel(tree_out, "soap_env:Body");
+        if (!body_out)
+            return -1;
+
+        n = findElementBylabel(body_in, "string");
+        const char **param_arry = (const char **)malloc(sizeof(const char *));
+        int length = 0;
+        for (tx::XMLElement *node = n; node; node = node->NextSiblingElement("string"))
+        {
+            // 构造字符串数组
+            param_arry = (const char **)realloc(param_arry, sizeof(const char *) * (length + 1));
+            const char *param = strdup(n->GetText());
+            param_arry[length] = param;
+            length++;
+        }
+
+        ExecuteResult rlt;
+        ParameterAttributeStruct **parameter_attributes = getParameterAttributes(param_arry, length, &rlt);
+        if (rlt.fault_code)
+        {
+            code = rlt.fault_code;
+            Log(NAME, L_NOTICE, "Fault in getting paramter attribute struct , Fault code: %s\n", fault_array[rlt.fault_code].code);
+            xml_create_generic_fault_message(body_out, code, doc_out);
+
+            // 释放空间
+            for (size_t i = 0; i < length; i++)
+                free(const_cast<char *>(param_arry[i]));
+            free(param_arry);
+
+            int index = 0;
+            while (parameter_attributes && parameter_attributes[index])
+            {
+                int len = 0;
+                while (parameter_attributes[index]->AccessList[len])
+                {
+                    free(parameter_attributes[index]->AccessList[len]);
+                    len++;
+                }
+                free(parameter_attributes[index]->AccessList);
+                free(parameter_attributes[index]->Name);
+                free(parameter_attributes[index]);
+                index++;
+            }
+            if (parameter_attributes)
+                free(parameter_attributes);
+            return 0;
+        }
+
+        n = doc_out.NewElement("cwmp:GetParameterAttributesResponse");
+        if (!n)
+            return -1;
+        body_out->InsertEndChild(n);
+
+        parameter_list = doc_out.NewElement("ParameterList");
+        if (!parameter_list)
+            return -1;
+        n->InsertEndChild(parameter_list);
+
+        int index = 0;
+        while (parameter_attributes && parameter_attributes[index])
+        {
+            n = doc_out.NewElement("ParameterAttributeStruct");
+            if (!n)
+                return -1;
+            parameter_list->InsertEndChild(n);
+
+            t = doc_out.NewElement("Name");
+            if (!t)
+                return -1;
+            t->SetText(parameter_attributes[index]->Name);
+            n->InsertEndChild(t);
+
+            t = doc_out.NewElement("Notification");
+            if (!t)
+                return -1;
+            t->SetText(std::to_string(parameter_attributes[index]->Notification).c_str());
+            n->InsertEndChild(t);
+
+            t = doc_out.NewElement("AccessList");
+            if (!t)
+                return -1;
+            n->InsertEndChild(t);
+
+            int len = 0;
+            while (parameter_attributes[index]->AccessList[len])
+            {
+                n = doc_out.NewElement("string");
+                if (!n)
+                    return -1;
+                n->SetText(parameter_attributes[index]->AccessList[len]);
+                t->InsertEndChild(n);
+                free(parameter_attributes[index]->AccessList[len]);
+                len++;
+            }
+            free(parameter_attributes[index]->AccessList);
+            free(parameter_attributes[index]->Name);
+            free(parameter_attributes[index]);
+            index++;
+        }
+        if (parameter_attributes)
+            free(parameter_attributes);
+
+        std::string c = "cwmp:ParameterAttributeStruct[" + std::to_string(index) + "]";
+        parameter_list->SetAttribute("soap_enc:arrayType", c.c_str());
+
+        Log(NAME, L_NOTICE, "send GetParameterAttributesResponse to the ACS\n");
+        return 0;
+    }
+
+    /**
+     * SetParameterAttributes
+     */
+    int xml_set_parameter_attributes(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out, tx::XMLDocument &doc_out)
+    {
+        tx::XMLElement *body_out, *n, *b;
+        int code = FAULT_9002;
+        ExecuteResult rlt;
+        bool NotificationChange = false, AccessListChange = false;
+        ParameterAttributeStruct *param_attr_struct = new ParameterAttributeStruct;
+
+        body_out = findElementBylabel(tree_out, "soap_env:Body");
+        if (!body_out)
+            return -1;
+
+        n = findElementBylabel(body_in, "SetParameterAttributesStruct");
+        for (tx::XMLElement *node = n; node; node = node->NextSiblingElement("SetParameterAttributesStruct"))
+        {
+            b = node->FirstChildElement("Name");
+            if (!b)
+                return -1;
+            param_attr_struct->Name = const_cast<char *>(b->GetText());
+
+            b = node->FirstChildElement("NotificationChange");
+            if (!b)
+                return -1;
+            NotificationChange = strcmp(b->GetText(), "true") == 0 ? true : false;
+
+            b = node->FirstChildElement("Notification");
+            if (!b)
+                return -1;
+            param_attr_struct->Notification = atoi(b->GetText());
+
+            b = node->FirstChildElement("AccessListChange");
+            if (!b)
+                return -1;
+            AccessListChange = strcmp(b->GetText(), "true") == 0 ? true : false;
+
+            param_attr_struct->AccessList = (char **)malloc(sizeof(char *));
+            int numOfAccess = 0;
+            n = findElementBylabel(n, "string");
+            for (tx::XMLElement *target = n; target; target->NextSiblingElement("string"))
+            {
+                param_attr_struct->AccessList = (char **)realloc(param_attr_struct->AccessList, sizeof(char *) * (numOfAccess + 1));
+                param_attr_struct->AccessList[numOfAccess] = strdup(target->GetText());
+                numOfAccess++;
+            }
+
+            rlt = setParameterAttributes(param_attr_struct, NotificationChange, AccessListChange, numOfAccess);
+            if (rlt.fault_code)
+            {
+                code = rlt.fault_code;
+                Log(NAME, L_NOTICE, "Fault in the param: %s , Fault code: %s\n", param_attr_struct->Name, fault_array[rlt.fault_code].code);
+                xml_create_generic_fault_message(body_out, code, doc_out);
+
+                for (size_t i = 0; i < numOfAccess; i++)
+                    free(param_attr_struct->AccessList[i]);
+                free(param_attr_struct->AccessList);
+                free(param_attr_struct->Name);
+                return 0;
+            }
+
+            for (size_t i = 0; i < numOfAccess; i++)
+                free(param_attr_struct->AccessList[i]);
+            free(param_attr_struct->AccessList);
+            free(param_attr_struct->Name);
+        }
+
+        rlt = save_data();
+        if (rlt.fault_code || !rlt.status)
+        {
+            code = rlt.fault_code;
+            Log(NAME, L_NOTICE, "Fault in setting parameter attributes, Fault code: %s\n", fault_array[rlt.fault_code].code);
+            xml_create_generic_fault_message(body_out, code, doc_out);
+            return 0;
+        }
+
+        b = doc_out.NewElement("cwmp:SetParameterAttributesResponse");
+        if (!b)
+            return -1;
+        body_out->InsertEndChild(b);
+
+        Log(NAME, L_NOTICE, "send SetParameterAttributesResponse to the ACS\n");
+        return 0;
+    }
+
+    /**
+     * Download
+     */
+    int xml_download(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out, tx::XMLDocument &doc_out)
+    {
+        tx::XMLElement *body_out, *n, *b, *t;
+        std::string download_url, file_size, command_key, file_type, username, password, r;
+        int delay = -1, code = FAULT_9002;
+
+        body_out = findElementBylabel(tree_out, "soap_env:Body");
+        if (!body_out)
+            return -1;
+
+        b = findElementBylabel(body_in, "CommandKey");
+        if (!b)
+            return -1;
+        if (b->GetText())
+            command_key = b->GetText();
+        else
+            command_key = "";
+
+        b = findElementBylabel(body_in, "FileType");
+        if (!b)
+            return -1;
+        if (b->GetText())
+            file_type = b->GetText();
+        else
+            file_type = "";
+
+        b = findElementBylabel(body_in, "URL");
+        if (!b)
+            return -1;
+        if (b->GetText())
+            download_url = b->GetText();
+        else
+            download_url = "";
+
+        b = findElementBylabel(body_in, "Username");
+        if (!b)
+            return -1;
+        if (b->GetText())
+            username = b->GetText();
+        else
+            username = "";
+
+        b = findElementBylabel(body_in, "Password");
+        if (!b)
+            return -1;
+        if (b->GetText())
+            password = b->GetText();
+        else
+            password = "";
+
+        b = findElementBylabel(body_in, "FileSize");
+        if (!b)
+            return -1;
+        if (b->GetText())
+            file_size = b->GetText();
+        else
+            file_size = "0";
+
+        b = findElementBylabel(body_in, "DelaySeconds");
+        if (!b)
+            return -1;
+        if (b->GetText())
+            delay = atoi(b->GetText());
+
+        if (download_url.empty() || file_size.empty() || command_key.empty() || file_type.empty() || username.empty() || password.empty() || delay < 0)
+        {
+            code = FAULT_9003;
+            xml_create_generic_fault_message(body_out, code, doc_out);
+            return 0;
+        }
+        std::regex urlRegex("^((https?|ftp|file)://)?([a-zA-Z0-9.-]+(\\.[a-zA-Z]{2,})+)(:\\d+)?(/\\S*)?$");
+        if (!std::regex_match(download_url, urlRegex))
+        {
+            code = FAULT_9003;
+            xml_create_generic_fault_message(body_out, code, doc_out);
+            return -1;
+        }
+        if (cwmp->get_download_count() >= MAX_DOWNLOAD)
+        {
+            code = FAULT_9004;
+            xml_create_generic_fault_message(body_out, code, doc_out);
+            return 0;
+        }
+        n = backup_add_download(command_key, delay, file_size, download_url, file_type, username, password);
+        cwmp->cwmp_add_download(command_key, delay, file_size, download_url, file_type, username, password, n);
+
+        t = doc_out.NewElement("cwmp:DownloadResponse");
+        if (!t)
+            return -1;
+        body_out->InsertEndChild(t);
+
+        b = doc_out.NewElement("Status");
+        if (!b)
+            return -1;
+        b->SetText("1");
+        t->InsertEndChild(b);
+
+        b = doc_out.NewElement("StartTime");
+        if (!b)
+            return -1;
+        b->SetText(UNKNOWN_TIME);
+        t->InsertEndChild(b);
+
+        b = doc_out.NewElement("CompleteTime");
+        if (!b)
+            return -1;
+        b->SetText(UNKNOWN_TIME);
+        t->InsertEndChild(b);
+
+        Log(NAME, L_NOTICE, "send DownloadResponse to the ACS\n");
+        return 0;
+    }
+
+    /**
+     * Upload
+     */
+    int xml_upload(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out, tx::XMLDocument &doc_out)
+    {
+        tx::XMLElement *body_out, *n, *t, *b;
+        std::string upload_url, command_key, file_type, username, password;
+        int delay = -1, code = FAULT_9002;
+
+        body_out = findElementBylabel(tree_out, "soap_env:Body");
+        if (!body_out)
+            return -1;
+
+        b = findElementBylabel(body_in, "CommandKey");
+        if (!b)
+            return -1;
+        if (b->GetText())
+            command_key = b->GetText();
+        else
+            command_key = "";
+
+        b = findElementBylabel(body_in, "FileType");
+        if (!b)
+            return -1;
+        if (b->GetText())
+            file_type = b->GetText();
+        else
+            file_type = "";
+
+        b = findElementBylabel(body_in, "URL");
+        if (!b)
+            return -1;
+        if (b->GetText())
+            upload_url = b->GetText();
+        else
+            upload_url = "";
+
+        b = findElementBylabel(body_in, "Username");
+        if (!b)
+            return -1;
+        if (b->GetText())
+            username = b->GetText();
+        else
+            username = "";
+
+        b = findElementBylabel(body_in, "Password");
+        if (!b)
+            return -1;
+        if (b->GetText())
+            password = b->GetText();
+        else
+            password = "";
+
+        b = findElementBylabel(body_in, "DelaySeconds");
+        if (!b)
+            return -1;
+        if (b->GetText())
+            delay = atoi(b->GetText());
+
+        if (upload_url.empty() || command_key.empty() || file_type.empty() || username.empty() || password.empty() || delay < 0)
+        {
+            code = FAULT_9003;
+            xml_create_generic_fault_message(body_out, code, doc_out);
+            return -1;
+        }
+        std::regex urlRegex("^((https?|ftp|file)://)?([a-zA-Z0-9.-]+(\\.[a-zA-Z]{2,})+)(:\\d+)?(/\\S*)?$");
+        if (!std::regex_match(upload_url, urlRegex))
+        {
+            code = FAULT_9003;
+            xml_create_generic_fault_message(body_out, code, doc_out);
+            return -1;
+        }
+        if (cwmp->get_upload_count() >= MAX_UPLOAD)
+        {
+            code = FAULT_9004;
+            xml_create_generic_fault_message(body_out, code, doc_out);
+            return -1;
+        }
+        n = backup_add_upload(command_key, delay, upload_url, file_type, username, password);
+        cwmp->cwmp_add_upload(command_key, delay, upload_url, file_type, username, password, n);
+
+        t = doc_out.NewElement("cwmp:UploadResponse");
+        if (!t)
+            return -1;
+        body_out->InsertEndChild(t);
+
+        b = doc_out.NewElement("Status");
+        if (!b)
+            return -1;
+        b->SetText("1");
+        t->InsertEndChild(b);
+
+        b = doc_out.NewElement("StartTime");
+        if (!b)
+            return -1;
+        b->SetText(UNKNOWN_TIME);
+        t->InsertEndChild(b);
+
+        b = doc_out.NewElement("CompleteTime");
+        if (!b)
+            return -1;
+        b->SetText(UNKNOWN_TIME);
+        t->InsertEndChild(b);
+
+        Log(NAME, L_NOTICE, "send UploadResponse to the ACS\n");
+        return 0;
+    }
+
+    /**
+     * FactoryReset
+     */
+    int xml_factory_reset(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out, tx::XMLDocument &doc_out)
+    {
+        tx::XMLElement *body_out, *b;
+
+        body_out = findElementBylabel(tree_out, "soap_env:Body");
+        if (!body_out)
+            return -1;
+
+        b = doc_out.NewElement("cwmp:FactoryResetResponse");
+        if (!b)
+            return -1;
+        body_out->InsertEndChild(b);
+
+        cwmp->cwmp_add_handler_end_session(ENDS_FACTORY_RESET);
+
+        Log(NAME, L_NOTICE, "send FactoryResetResponse to the ACS\n");
+        return 0;
+    }
+
+    /**
+     * Reboot
+     */
+    int xml_reboot(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out, tx::XMLDocument &doc_out)
+    {
+        tx::XMLElement *body_out, *b;
+        std::string command_key;
+        int code = FAULT_9002;
+
+        body_out = findElementBylabel(tree_out, "soap_env:Body");
+        if (!body_out)
+            return -1;
+
+        b = findElementBylabel(body_in, "CommandKey");
+        if (!b)
+        {
+            code = FAULT_9003;
+            xml_create_generic_fault_message(body_out, code, doc_out);
+            return 0;
+        }
+        if (b->GetText())
+            command_key = b->GetText();
+        else
+            command_key = "";
+
+        b = doc_out.NewElement("cwmp:RebootResponse");
+        if (!b)
+            return -1;
+        body_out->InsertEndChild(b);
+
+        backup_add_event(EVENT_M_REBOOT, command_key, 0);
+        cwmp->cwmp_add_handler_end_session(ENDS_REBOOT);
+
+        Log(NAME, L_NOTICE, "send RebootResponse to the ACS\n");
+        return 0;
+    }
+
+    /**
+     * ScheduleInform
+     */
+    int xml_schedule_inform(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out, tx::XMLDocument &doc_out)
+    {
+        tx::XMLElement *body_out, *b;
+        std::string command_key, delay_seconds;
+        int delay = 0, code = FAULT_9002;
+
+        body_out = findElementBylabel(tree_out, "soap_env:Body");
+        if (!body_out)
+            return -1;
+
+        b = findElementBylabel(body_in, "CommandKey");
+        if (!b)
+        {
+            code = FAULT_9003;
+            xml_create_generic_fault_message(body_out, code, doc_out);
+            return 0;
+        }
+        if (b->GetText())
+            command_key = b->GetText();
+        else
+            command_key = "";
+
+        b = findElementBylabel(body_in, "DelaySeconds");
+        if (!b)
+        {
+            code = FAULT_9003;
+            xml_create_generic_fault_message(body_out, code, doc_out);
+            return 0;
+        }
+        if (b->GetText())
+            delay = atoi(b->GetText());
+        else
+        {
+            code = FAULT_9003;
+            xml_create_generic_fault_message(body_out, code, doc_out);
+            return 0;
+        }
+
+        cwmp->cwmp_add_scheduled_inform(command_key, delay);
+        b = doc_out.NewElement("cwmp:ScheduleInformResponse");
+        if (!b)
+            return -1;
+        body_out->InsertEndChild(b);
+
+        Log(NAME, L_NOTICE, "send ScheduleInformResponse to the ACS\n");
+        return 0;
+    }
+
+    /**
+     * AddObject
+     */
+    int xml_AddObject(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out, tx::XMLDocument &doc_out)
+    {
+        tx::XMLElement *body_out, *b, *t;
+        const char *object_name = NULL, *param_key = NULL;
+        char *instance = NULL;
+        int code = FAULT_9002;
+
+        body_out = findElementBylabel(tree_out, "soap_env:Body");
+        if (!body_out)
+            return -1;
+
+        b = findElementBylabel(body_in, "ObjectName");
+        if (!b)
+        {
+            code = FAULT_9003;
+            Log(NAME, L_NOTICE, "Fault in the param: %s, Fault code: %s\n", "", fault_array[code].code);
+            xml_create_generic_fault_message(body_out, code, doc_out);
+            return 0;
+        }
+        if (b->GetText())
+            object_name = b->GetText();
+        else
+            object_name = "";
+
+        b = findElementBylabel(body_in, "ParameterKey");
+        if (!b)
+        {
+            code = FAULT_9003;
+            Log(NAME, L_NOTICE, "Fault in the param: %s, Fault code: %s\n", object_name, fault_array[code].code);
+            xml_create_generic_fault_message(body_out, code, doc_out);
+            return 0;
+        }
+        if (b->GetText())
+            param_key = b->GetText();
+        else
+            param_key = "";
+
+        ExecuteResult rlt;
+        rlt = addObject(object_name, &instance);
+        if (rlt.fault_code)
+        {
+            code = rlt.fault_code;
+            Log(NAME, L_NOTICE, "Fault in the param: %s, Fault code: %s\n", object_name, fault_array[code].code);
+            xml_create_generic_fault_message(body_out, code, doc_out);
+            free(instance);
+            return 0;
+        }
+        if (!rlt.status || !instance)
+        {
+            code = FAULT_9002;
+            Log(NAME, L_NOTICE, "Fault in the param: %s, Fault code: %s\n", object_name, fault_array[code].code);
+            xml_create_generic_fault_message(body_out, code, doc_out);
+            free(instance);
+            return 0;
+        }
+
+        save_data();
+        setParameter("Device.ManagementServer.ParameterKey", param_key, NOVERIFY);
+
+        t = doc_out.NewElement("cwmp:AddObjectResponse");
+        if (!t)
+            return -1;
+        body_out->InsertEndChild(t);
+
+        b = doc_out.NewElement("InstanceNumber");
+        if (!b)
+            return -1;
+        b->SetText(instance);
+        t->InsertEndChild(b);
+
+        b = doc_out.NewElement("Status");
+        if (!b)
+            return -1;
+        b->SetText(std::to_string(rlt.status).c_str());
+        t->InsertEndChild(b);
+
+        free(instance);
+
+        Log(NAME, L_NOTICE, "send AddObjectResponse to the ACS\n");
+        return 0;
+    }
+
+    /**
+     * DeleteObject
+     */
+    int xml_DeleteObject(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out, tx::XMLDocument &doc_out)
+    {
+        tx::XMLElement *body_out, *t, *b;
+        const char *object_name = NULL, *param_key = NULL;
+	    int code = FAULT_9002;
+
         body_out = findElementBylabel(tree_out, "soap_env:Body");
         if(!body_out) return -1;
 
-        n = findElementBylabel(body_in, "string");
-        for(tx::XMLElement *node = n; node; node = node->NextSiblingElement("string"))
-        {
-            //构造字符串数组
-            
+        b = findElementBylabel(body_in, "ObjectName");
+        if(!b) {
+            code = FAULT_9003;
+            Log(NAME, L_NOTICE, "Fault in the param: %s, Fault code: %s\n", "", fault_array[code].code);
+            xml_create_generic_fault_message(body_out, code, doc_out);
+            return 0;
+        }
+        if(b->GetText()) object_name = b->GetText();
+        else object_name = "";
+
+        b = findElementBylabel(body_in, "ParameterKey");
+        if(!b) {
+            code = FAULT_9003;
+            Log(NAME, L_NOTICE, "Fault in the param: %s, Fault code: %s\n", object_name, fault_array[code].code);
+	        xml_create_generic_fault_message(body_out, code, doc_out);
+            return 0;
+        }
+        if(b->GetText()) param_key = b->GetText();
+        else param_key = "";
+
+        ExecuteResult rlt = deleteObject(object_name);
+        if(rlt.fault_code) {
+            code = FAULT_9003;
+            Log(NAME, L_NOTICE, "Fault in the param: %s, Fault code: %s\n", object_name, fault_array[code].code);
+	        xml_create_generic_fault_message(body_out, code, doc_out);
+            return 0;
+        }
+        if(!rlt.status) {
+            code = FAULT_9002;
+            Log(NAME, L_NOTICE, "Fault in the param: %s, Fault code: %s\n", object_name, fault_array[code].code);
+	        xml_create_generic_fault_message(body_out, code, doc_out);
+            return 0;
         }
 
+        save_data();
+        setParameter("Device.ManagementServer.ParameterKey", param_key, NOVERIFY);
 
+        t = doc_out.NewElement("cwmp:DeleteObjectResponse");
+        if(!t) return -1;
+        body_out->InsertEndChild(t);
+
+        b = doc_out.NewElement("Status");
+        if(!b) return -1;
+        t->SetText(std::to_string(rlt.status).c_str());
+        t->InsertEndChild(b);
+
+	    Log(NAME, L_NOTICE, "send DeleteObjectResponse to the ACS\n");
         return 0;
-    }
-
-    int xml_download(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out, tx::XMLDocument &doc_out)
-    {
-        return 0;
-    }
-
-    int xml_upload(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out, tx::XMLDocument &doc_out)
-    {
-        return 0;
-    }
-
-    int xml_factory_reset(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out, tx::XMLDocument &doc_out)
-    {
-        return 0;
-    }
-
-    int xml_reboot(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out, tx::XMLDocument &doc_out)
-    {
-        return 0;
-    }
-
-    int xml_get_parameter_attributes(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out, tx::XMLDocument &doc_out)
-    {
-        return 0;
-    }
-
-    int xml_schedule_inform(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out, tx::XMLDocument &doc_out)
-    {
-        return 0;
-    }
-
-    int xml_AddObject(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out, tx::XMLDocument &doc_out)
-    {
-        return 0;
-    }
-
-    int xml_DeleteObject(tx::XMLElement *body_in, tx::XMLElement *tree_in, tx::XMLElement *tree_out, tx::XMLDocument &doc_out)
-    {
-        return 0;
-    }
-
-    void xml_do_inform()
-    {
     }
 }
 
@@ -933,46 +1606,52 @@ int xml_prepare_get_rpc_methods_message(std::string &msg_out)
     tx::XMLElement *tree;
 
     doc.Parse(CWMP_GET_RPC_METHOD_MESSAGE);
-	tree = doc.RootElement();
-	if (!tree) return -1;
+    tree = doc.RootElement();
+    if (!tree)
+        return -1;
 
-	if(xml_add_cwmpid(tree)) return -1;//向传入的 XML 树中添加一个 cwmp:ID 元素的
+    if (xml_add_cwmpid(tree))
+        return -1; // 向传入的 XML 树中添加一个 cwmp:ID 元素的
 
     tx::XMLPrinter printer;
     doc.Print(&printer);
     msg_out.assign(printer.CStr());
     std::cout << msg_out << std::endl;
 
-	return 0;
+    return 0;
 }
 
 /**
  * 解析ACS对get_rpc的响应
-*/
+ */
 int xml_parse_get_rpc_methods_response_message(std::string msg_in)
 {
     tx::XMLDocument doc;
     doc.Parse(msg_in.c_str());
     tx::XMLElement *tree, *b;
-	int fault = 0;//用于表示错误状态
+    int fault = 0; // 用于表示错误状态
 
-	tree = doc.RootElement();
-	if (!tree) return -1;
+    tree = doc.RootElement();
+    if (!tree)
+        return -1;
     xml_free_ns(); // 释放 XML 命名空间相关的资源
-	if(xml_recreate_namespace(tree)) return -1;//重新创建 XML 树的命名空间
+    if (xml_recreate_namespace(tree))
+        return -1; // 重新创建 XML 树的命名空间
 
-	b = xml_find_node_by_env_type(tree, "Fault");//在 XML 树中查找具有特定Fault的节点
-	if (b != nullptr) {
+    b = xml_find_node_by_env_type(tree, "Fault"); // 在 XML 树中查找具有特定Fault的节点
+    if (b != nullptr)
+    {
         b = findElementByValue(b, "8005");
-		if (b) {
-			fault = FAULT_ACS_8005;//错误为8005
-			return fault;
-		}
-		return fault;
-	}
+        if (b)
+        {
+            fault = FAULT_ACS_8005; // 错误为8005
+            return fault;
+        }
+        return fault;
+    }
 
-	xml_get_hold_request(tree);//从 XML 树中获取特定节点的值并设置 cwmp->hold_requests 的布尔值
-	return fault;
+    xml_get_hold_request(tree); // 从 XML 树中获取特定节点的值并设置 cwmp->hold_requests 的布尔值
+    return fault;
 }
 
 /**
@@ -1013,105 +1692,125 @@ int xml_parse_transfer_complete_response_message(std::string msg_in)
 
 /**
  * 解析ACS发送过来的请求
-*/
+ */
 int xml_handle_message(std::string msg_in, std::string &msg_out)
 {
     tx::XMLDocument doc_int, doc_out;
     tx::XMLElement *tree_in = NULL, *tree_out = NULL, *b, *body_out;
-	const rpc_method *method;
-	int i, code = FAULT_9002;
-	std::string c;
+    const rpc_method *method;
+    int i, code = FAULT_9002;
+    std::string c;
 
-    auto handler_fault = [tree_out, &body_out, code, &doc_out, &msg_out](){
+    auto handler_fault = [tree_out, &body_out, code, &doc_out, &msg_out]()
+    {
         body_out = findElementBylabel(tree_out, "soap_env:Body");
-        if (body_out == nullptr) return -1;
+        if (body_out == nullptr)
+            return -1;
         // xml_create_generic_fault_message(body_out, code);//待实现
         tx::XMLPrinter printer;
         doc_out.Print(&printer);
         msg_out.assign(printer.CStr());
-        std::cout << msg_out << std::endl;//响应soap
+        std::cout << msg_out << std::endl; // 响应soap
         return 0;
     };
 
     doc_out.Parse(CWMP_RESPONSE_MESSAGE);
-	tree_out = doc_out.RootElement();//加载 CWMP_RESPONSE_MESSAGE 并将结果存储在 tree_out 中。如果解析失败，跳转到 error 标签
-	if (!tree_out) return -1;
+    tree_out = doc_out.RootElement(); // 加载 CWMP_RESPONSE_MESSAGE 并将结果存储在 tree_out 中。如果解析失败，跳转到 error 标签
+    if (!tree_out)
+        return -1;
 
     doc_int.Parse(msg_in.c_str());
-	tree_in = doc_int.RootElement();//使用 mxmlLoadString 函数解析输入的 XML 消息（msg_in），并将结果存储在 tree_in 中
-	if (!tree_in) return -1;
+    tree_in = doc_int.RootElement(); // 使用 mxmlLoadString 函数解析输入的 XML 消息（msg_in），并将结果存储在 tree_in 中
+    if (!tree_in)
+        return -1;
 
     xml_free_ns(); // 释放 XML 命名空间相关的资源
-	if(xml_recreate_namespace(tree_in)) {//重新创建 XML 命名空间的函数, 失败返回-1, 成功返回0
-		code = FAULT_9003;
-		return handler_fault();
-	}
-	/* handle cwmp:ID */
+    if (xml_recreate_namespace(tree_in))
+    { // 重新创建 XML 命名空间的函数, 失败返回-1, 成功返回0
+        code = FAULT_9003;
+        return handler_fault();
+    }
+    /* handle cwmp:ID */
     c = ns.cwmp + ":ID";
 
     b = findElementBylabel(tree_in, c.c_str());
-	/* ACS没有发送ID参数，我们在没有它的情况下还是继续 */
-	if (b) {
-        if (b->GetText()) {
+    /* ACS没有发送ID参数，我们在没有它的情况下还是继续 */
+    if (b)
+    {
+        if (b->GetText())
+        {
             c.assign(b->GetText());
 
             b = findElementBylabel(tree_out, "cwmp:ID");
-            if (!b) return -1;
-            b->SetText(c.c_str());//与ACS请求体中的id保持一致
+            if (!b)
+                return -1;
+            b->SetText(c.c_str()); // 与ACS请求体中的id保持一致
         }
     }
 
-	b = xml_find_node_by_env_type(tree_in, "Body");
-	if (!b) {
-		code = FAULT_9003;
-		return handler_fault();
-	}
-
-    b = b->FirstChildElement();
-    if(!b) {
+    b = xml_find_node_by_env_type(tree_in, "Body");
+    if (!b)
+    {
         code = FAULT_9003;
         return handler_fault();
     }
 
-    c.assign(b->Value());//获取标签名称
-	if (c.find(':') != std::string::npos) {//存在冒号
-		size_t ns_len = c.find(':');
+    b = b->FirstChildElement();
+    if (!b)
+    {
+        code = FAULT_9003;
+        return handler_fault();
+    }
 
-		if (ns.cwmp.length() != ns_len) {
-			code = FAULT_9003;
-			return handler_fault();
-		}
+    c.assign(b->Value()); // 获取标签名称
+    if (c.find(':') != std::string::npos)
+    { // 存在冒号
+        size_t ns_len = c.find(':');
 
-		if (c.find(ns.cwmp) == std::string::npos) {
-			code = FAULT_9003;
-			return handler_fault();
-		}
+        if (ns.cwmp.length() != ns_len)
+        {
+            code = FAULT_9003;
+            return handler_fault();
+        }
 
-        c = c.substr(ns_len + 1);//拷贝冒号后面的标签
-	} else {
-		code = FAULT_9003;
-		return handler_fault();
-	}
-	method = NULL;
-	Log(NAME, L_NOTICE, "received %s method from the ACS\n", c.c_str());
-	for (i = 0; i < ARRAY_SIZE(rpc_methods); i++) {
-		if (c == rpc_methods[i].name) {
-			method = &rpc_methods[i];
-			break;
-		}
-	}
-	if (method) {
-		if (method->handler(b, tree_in, tree_out, doc_out)) return -1;
-	}
-	else {
-		code = FAULT_9000;
-		return handler_fault();
-	}
+        if (c.find(ns.cwmp) == std::string::npos)
+        {
+            code = FAULT_9003;
+            return handler_fault();
+        }
+
+        c = c.substr(ns_len + 1); // 拷贝冒号后面的标签
+    }
+    else
+    {
+        code = FAULT_9003;
+        return handler_fault();
+    }
+    method = NULL;
+    Log(NAME, L_NOTICE, "received %s method from the ACS\n", c.c_str());
+    for (i = 0; i < ARRAY_SIZE(rpc_methods); i++)
+    {
+        if (c == rpc_methods[i].name)
+        {
+            method = &rpc_methods[i];
+            break;
+        }
+    }
+    if (method)
+    {
+        if (method->handler(b, tree_in, tree_out, doc_out))
+            return -1;
+    }
+    else
+    {
+        code = FAULT_9000;
+        return handler_fault();
+    }
     tx::XMLPrinter printer;
     doc_out.Print(&printer);
     msg_out.assign(printer.CStr());
-    std::cout << msg_out << std::endl;//响应soap
-	return 0;
+    std::cout << msg_out << std::endl; // 响应soap
+    return 0;
 }
 
 /**

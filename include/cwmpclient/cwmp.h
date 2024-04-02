@@ -123,6 +123,10 @@ struct deviceInfo
 	std::string serial_number;
 };
 
+// struct scheduled_inform {
+// 	char *key;
+// };
+
 class cwmpInfo
 {
 private:
@@ -131,6 +135,7 @@ private:
 	std::list<notification *> notifications;
 	std::list<download *> downloads;
 	std::list<upload *> uploads;
+	std::list<std::string> scheduled_informs;
 	deviceInfo deviceInfo;
 	int retry_count;
 	int download_count;
@@ -157,6 +162,8 @@ public:
 	cwmpInfo();
 	~cwmpInfo();
 	int get_retry_count(void);
+	int get_download_count(void);
+	int get_upload_count(void);
 	std::list<event *> get_event_list(void);
 	struct deviceInfo get_device_info(void);
 	std::list<notification *> get_notifications(void);
@@ -179,6 +186,8 @@ public:
 	void cwmp_add_upload(std::string key, int delay, std::string upload_url, std::string file_type, std::string username, std::string password, tinyxml2::XMLElement *node);
 	void cwmp_upload_launch(upload *ul, int delay);
 
+	void cwmp_add_scheduled_inform(std::string key, int delay);
+	void cwmp_scheduled_inform(int64_t interval, std::string key);
 	void cwmp_add_inform_timer(int64_t interval);
 	void cwmp_do_inform(int64_t interval);
 	void cwmp_do_inform_retry(int delaySeconds);
@@ -189,6 +198,7 @@ public:
 	void cwmp_update_value_change(void);
 
 	int cwmp_periodic_inform_time(void);
+	void cwmp_add_handler_end_session(int handler);
 };
 
 extern cwmpInfo *cwmp;

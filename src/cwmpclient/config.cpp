@@ -460,7 +460,7 @@ static int config_init_acs(void)
 TimePoint parseTime(const char* timeStr) {
     std::tm tm = {};
     std::istringstream ss(timeStr);
-    ss >> std::get_time(&tm, "%FT%T");
+    ss >> std::get_time(&tm, "%Y-%m-%dT%H:%M:%S");
     if (ss.fail()) {
         Log(NAME, L_DEBUG, "Invalid time string format");
         return TimePoint::min();

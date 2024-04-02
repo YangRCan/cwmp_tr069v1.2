@@ -56,6 +56,7 @@ cwmpInfo::cwmpInfo()
 
 cwmpInfo::~cwmpInfo()
 {
+	curl_global_cleanup();//释放libcurl的全局资源
 	Log(NAME, L_DEBUG, "cwmp object destroyed.\n");
 }
 
@@ -65,6 +66,22 @@ cwmpInfo::~cwmpInfo()
 int cwmpInfo::get_retry_count(void)
 {
 	return this->retry_count;
+}
+
+/**
+ * 返回成员 download_count
+ */
+int cwmpInfo::get_download_count(void)
+{
+	return this->download_count;
+}
+
+/**
+ * 返回成员 upload_count
+ */
+int cwmpInfo::get_upload_count(void)
+{
+	return this->upload_count;
 }
 
 /**
@@ -154,6 +171,7 @@ void cwmpInfo::cwmp_clean(void)
 		(*it)->cancelFlag = true;
 	}
 	this->uploads.clear();
+	this->scheduled_informs.clear();
 	this->download_count = 0;
 	this->upload_count = 0;
 	this->end_session = 0;
@@ -410,6 +428,35 @@ void cwmpInfo::cwmp_upload_launch(upload *ul, int delay)
 	backup_update_complete_time_transfer_complete(node);
 	this->thread_mtx.unlock();
 	this->cwmp_add_inform_timer(10);
+}
+
+/**
+ * 添加定时上报
+*/
+void cwmpInfo::cwmp_add_scheduled_inform(std::string key, int delay)
+{
+	Log(NAME, L_NOTICE, "scheduled inform in %d sec\n", delay);
+	this->scheduled_informs.push_back(key);
+	std::thread timerThread(&cwmpInfo::cwmp_scheduled_inform, this, delay, key);
+	timerThread.detach(); // 将线程分离，使得线程可以自主运行
+}
+
+/**
+ * 定时上报线程
+*/
+void cwmpInfo::cwmp_scheduled_inform(int64_t interval, std::string key) {
+	std::this_thread::sleep_for(std::chrono::seconds(interval));
+	if (!this->inform_mtx.try_lock())
+	{
+		// 获取锁失败，执行退出逻辑
+		Log(NAME, L_NOTICE, "Failed to acquire lock. Exiting thread.\n");
+		return;
+	}
+	cwmp_add_event(EVENT_SCHEDULED, NULL, 0, EVENT_BACKUP);
+	cwmp_add_event(EVENT_M_SCHEDULEINFORM, key, 0, EVENT_BACKUP);
+	this->inform_mtx.unlock();
+	cwmp_add_inform_timer(10);
+	this->scheduled_informs.remove(key);
 }
 
 /**
@@ -855,6 +902,14 @@ int cwmpInfo::cwmp_periodic_inform_time(void)
 }
 
 /**
+ * 添加会话结束时要执行什么操作
+*/
+void cwmpInfo::cwmp_add_handler_end_session(int handler)
+{
+	cwmp->end_session |= handler;
+}
+
+/**
  * 在会话结束时判断是否需要进行哪些操作
  */
 void cwmpInfo::cwmp_handle_end_session(void)
@@ -863,13 +918,13 @@ void cwmpInfo::cwmp_handle_end_session(void)
 	if (this->end_session & ENDS_FACTORY_RESET)
 	{
 		Log(NAME, L_NOTICE, "end session: factory reset\n");
-		// do_factory_reset();//恢复出厂
+		do_factory_reset();//恢复出厂
 		exit(EXIT_SUCCESS);
 	}
 	if (this->end_session & ENDS_REBOOT)
 	{
 		Log(NAME, L_NOTICE, "end session: reboot\n");
-		// do_reboot();//重启
+		do_reboot();//重启
 		exit(EXIT_SUCCESS);
 	}
 	if (this->end_session & ENDS_RELOAD_CONFIG)

@@ -15,7 +15,9 @@ Operate operates[] = {
     {"delete", deleteObject},
     {"download", downloadFile},
     {"upload", uploadFile},
-    {"inform", NULL}};
+    {"inform", NULL},
+    {"factory_reset", do_factory_reset},
+    {"reboot", do_reboot}};
 
 /**
  * 数据初始化
@@ -150,12 +152,14 @@ int main(int argc, char *argv[])
                     char *str;
                     ExecuteResult rlt = operates[i].function(argv[2], &str);
                     if(rlt.status) printf("{ \" parameter \" : \" %s \"} New successfully created, instance number: %s", argv[2], str);
+                    save_data();
                     break;
                 }
                 else if (argc == 3 && strcmp(operate, "delete") == 0)
                 {
                     ExecuteResult rlt = operates[i].function(argv[2]);
                     if(rlt.status) printf("{ \" parameter \" : \" %s \"} has been deleted ", argv[2]);
+                    save_data();
                     break;
                 }
                 else if (argc == 7 && strcmp(operate, "download") == 0)
@@ -188,6 +192,16 @@ int main(int argc, char *argv[])
                         free(inform_parameter[i]);
                     }
                     free(inform_parameter);
+                    break;
+                }
+                else if(argc == 2 && strcmp(operate, "factory_reset") == 0)
+                {
+                    operates[i].function();
+                    break;
+                }
+                else if(argc == 2 && strcmp(operate, "reboot") == 0)
+                {
+                    operates[i].function();
                     break;
                 }
                 else

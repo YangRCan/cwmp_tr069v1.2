@@ -13,6 +13,7 @@
 #endif
 #if defined(__ANDROID__)
 #include <unistd.h>
+#include <sys/reboot.h>
 #include <sys/stat.h>
 #endif // __ANDROID__
 
@@ -353,7 +354,7 @@ ExecuteResult setParameterAttributes(ParameterAttributeStruct *parameterAttribut
                 cJSON_AddItemToObject(node, "AccessList", accessList);
             }
 
-            save_data();
+            // save_data();
         }
         else
         {
@@ -512,7 +513,7 @@ ExecuteResult deleteObject(const char *path)
     }
 
     cJSON_DeleteItemFromObject(node, child->string); // 内部调用了cJSON_Delete将移除的对象释放
-    save_data();
+    // save_data();
     result.status = 1;
     return result;
 }
@@ -771,6 +772,42 @@ param_info **getInformParameter()
     param_info **info_param = NULL;
     info_param = getInfoParamFromJson("Device.");
     return info_param;
+}
+
+/**
+ * 执行恢复出厂设置命令
+*/
+ExecuteResult do_factory_reset()
+{
+    ExecuteResult rlt;
+    rlt.fault_code = FAULT_0;
+    rlt.status = 1;
+    printf("恢复出厂！");
+#if defined(__ANDROID__)
+    system("echo --wipe_data >> /cache/recovery/command");
+    system("echo --wipe_cache >> /cache/recovery/command");
+    // 同步文件系统
+    system("sync");
+    // 重启到recovery模式
+    system("reboot recovery");
+#endif // __ANDROID__
+    return rlt;
+}
+
+/**
+ * 执行重启命令
+*/
+ExecuteResult do_reboot()
+{
+    ExecuteResult rlt;
+    rlt.fault_code = FAULT_0;
+    rlt.status = 1;
+    printf("重启！");
+#if defined(__ANDROID__)
+    sync();
+    reboot(RB_AUTOBOOT);
+#endif // __ANDROID__
+    return rlt;
 }
 
 /**#################################
@@ -1339,7 +1376,7 @@ char *createObjectToJsonData(struct Object *placeholder)
     // 给新创建的实例补充属性
     ObjectInstanceAttributeSupplementation(target, placeholder);
 
-    save_data();
+    // save_data();
 
     return str; // 返回实例号
 }
@@ -1911,14 +1948,3 @@ int download_file_to_dir(const char *url, const char *username, const char *pass
     }
     return 1; // 下载成功
 }
-
-/**
- * 返回上一次命令的执行情况
- */
-// void getExecutionStatus(int *status, int *fault)
-// {
-//     *fault = Fault_Code;
-//     *status = exe_status;
-//     Fault_Code = FAULT_0; // 默认无错
-//     exe_status = 0;       // 默认不成功
-// }

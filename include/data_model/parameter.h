@@ -132,6 +132,8 @@ ExecuteResult downloadFile(const char *url, const char *fileType, const char *fi
 ExecuteResult applyDownloadFile(const char *fileType);
 ExecuteResult uploadFile(const char *url, const char *fileType, const char *username, const char *password);
 param_info **getInformParameter();
+ExecuteResult do_factory_reset();
+ExecuteResult do_reboot();
 
 // 数据模型相关的函数
 int addObjectToDataModel(char *path, const unsigned char writable, const unsigned char limit, void (*function)());

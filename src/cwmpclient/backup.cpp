@@ -24,7 +24,7 @@ tx::XMLDocument backup_doucment;
 /**
  * 在xml树中查找是否有标签值为 label 的标签
  */
-static tx::XMLElement *findElementBylabel(tx::XMLElement *element, const char *label)
+static tx::XMLElement *backup_findElementBylabel(tx::XMLElement *element, const char *label)
 {
     if (!element)
         return nullptr;
@@ -32,7 +32,7 @@ static tx::XMLElement *findElementBylabel(tx::XMLElement *element, const char *l
         return element;
     for (tx::XMLElement *child = element->FirstChildElement(); child; child = child->NextSiblingElement())
     {
-        tx::XMLElement *found = findElementBylabel(child, label);
+        tx::XMLElement *found = backup_findElementBylabel(child, label);
         if (found)
             return found;
     }
@@ -434,7 +434,7 @@ void backup_check_software_version(void)
 tx::XMLElement *backup_check_transfer_complete(void)
 {
     tx::XMLElement *root = backup_doucment.RootElement();
-    return findElementBylabel(root, "transfer_complete");
+    return backup_findElementBylabel(root, "transfer_complete");
 }
 
 /**
@@ -542,6 +542,119 @@ tx::XMLElement *backup_add_event(int code, std::string key, int method_id)
     }
 
     return event_node;
+}
+
+/**
+ * 在 cwmp 标签下添加 download 标签及其子标签
+*/
+tx::XMLElement* backup_add_download(std::string key, int delay, std::string file_size, std::string download_url, std::string file_type, std::string username, std::string password)
+{
+    tx::XMLElement *tree, *cwmp_node, *download_node, *n;
+    tx::XMLElement *root = backup_doucment.RootElement();
+    unsigned int timestamp = delay + static_cast<unsigned int>(time(NULL));
+    std::string time_execute = std::to_string(timestamp);
+    cwmp_node = root->FirstChildElement("cwmp");
+    if (!cwmp_node)
+        return NULL;
+    download_node = backup_doucment.NewElement("download");
+    if (!download_node)
+        return NULL;
+    cwmp_node->InsertEndChild(download_node);
+    
+    n = backup_doucment.NewElement("command_key");
+    if(!n) return NULL;
+    n->SetText(key.c_str());
+    download_node->InsertEndChild(n);
+
+    n = backup_doucment.NewElement("file_type");
+    if(!n) return NULL;
+    n->SetText(file_type.c_str());
+    download_node->InsertEndChild(n);
+
+    n = backup_doucment.NewElement("url");
+    if(!n) return NULL;
+    n->SetText(download_url.c_str());
+    download_node->InsertEndChild(n);
+
+    n = backup_doucment.NewElement("username");
+    if(!n) return NULL;
+    n->SetText(username.c_str());
+    download_node->InsertEndChild(n);
+
+    n = backup_doucment.NewElement("password");
+    if(!n) return NULL;
+    n->SetText(password.c_str());
+    download_node->InsertEndChild(n);
+
+    n = backup_doucment.NewElement("file_size");
+    if(!n) return NULL;
+    n->SetText(file_size.c_str());
+    download_node->InsertEndChild(n);
+
+    n = backup_doucment.NewElement("time_execute");
+    if(!n) return NULL;
+    n->SetText(time_execute.c_str());
+    download_node->InsertEndChild(n);
+
+    if (backup_doucment.SaveFile(BACKUP_FILE) != tx::XML_SUCCESS)
+    {
+        Log(NAME, L_DEBUG, "Failed to save backup.xml file.");
+    }
+    return download_node;
+}
+
+/**
+ * 在 cwmp 标签下添加 upload 标签及其子标签
+*/
+tinyxml2::XMLElement* backup_add_upload(std::string key, int delay, std::string upload_url, std::string file_type, std::string username, std::string password)
+{
+    tx::XMLElement *tree, *cwmp_node, *upload_node, *n;
+    tx::XMLElement *root = backup_doucment.RootElement();
+    unsigned int timestamp = delay + static_cast<unsigned int>(time(NULL));
+    std::string time_execute = std::to_string(timestamp);
+    cwmp_node = root->FirstChildElement("cwmp");
+    if (!cwmp_node)
+        return NULL;
+    upload_node = backup_doucment.NewElement("upload");
+    if (!upload_node)
+        return NULL;
+    cwmp_node->InsertEndChild(upload_node);
+    
+    n = backup_doucment.NewElement("command_key");
+    if(!n) return NULL;
+    n->SetText(key.c_str());
+    upload_node->InsertEndChild(n);
+
+    n = backup_doucment.NewElement("file_type");
+    if(!n) return NULL;
+    n->SetText(file_type.c_str());
+    upload_node->InsertEndChild(n);
+
+    n = backup_doucment.NewElement("url");
+    if(!n) return NULL;
+    n->SetText(upload_url.c_str());
+    upload_node->InsertEndChild(n);
+
+    n = backup_doucment.NewElement("username");
+    if(!n) return NULL;
+    n->SetText(username.c_str());
+    upload_node->InsertEndChild(n);
+
+    n = backup_doucment.NewElement("password");
+    if(!n) return NULL;
+    n->SetText(password.c_str());
+    upload_node->InsertEndChild(n);
+
+    n = backup_doucment.NewElement("time_execute");
+    if(!n) return NULL;
+    n->SetText(time_execute.c_str());
+    upload_node->InsertEndChild(n);
+
+    if (backup_doucment.SaveFile(BACKUP_FILE) != tx::XML_SUCCESS)
+    {
+        Log(NAME, L_DEBUG, "Failed to save backup.xml file.");
+    }
+    return upload_node;
 }
 
 /**
@@ -659,9 +772,9 @@ int backup_extract_transfer_complete(tx::XMLElement *node, std::string &msg_out,
 
 	if(xml_add_cwmpid(tree)) return -1;
 
-    b = findElementBylabel(node, "command_key");
+    b = backup_findElementBylabel(node, "command_key");
 	if (!b) return -1;
-    n = findElementBylabel(tree, "CommandKey");
+    n = backup_findElementBylabel(tree, "CommandKey");
 	if (!n) return -1;
 	if (b->GetText()) { //检查 XML 节点 b 的子节点是否存在、其类型是否为 MXML_OPAQUE 且值不为空
 		val = b->GetText();
@@ -670,34 +783,34 @@ int backup_extract_transfer_complete(tx::XMLElement *node, std::string &msg_out,
 	else
 		n->SetText("");
 
-    b = findElementBylabel(node, "fault_code");
+    b = backup_findElementBylabel(node, "fault_code");
 	if (!b) return -1;
-    n = findElementBylabel(tree, "FaultCode");
+    n = backup_findElementBylabel(tree, "FaultCode");
 	if (!n) return -1;
     n->SetText(b->GetText());
 
-    b = findElementBylabel(node, "fault_string");
+    b = backup_findElementBylabel(node, "fault_string");
 	if (!b) return -1;
 	if (b->GetText()) {
-        n = findElementBylabel(tree, "FaultString");
+        n = backup_findElementBylabel(tree, "FaultString");
 		if (!n) return -1;
         val = b->GetText();
         n->SetText(val);
 	}
 
-    b = findElementBylabel(node, "start_time");
+    b = backup_findElementBylabel(node, "start_time");
 	if (!b) return -1;
-    n = findElementBylabel(tree, "StartTime");
+    n = backup_findElementBylabel(tree, "StartTime");
 	if (!n) return -1;
     n->SetText(b->GetText());
 
-    b = findElementBylabel(node, "complete_time");
+    b = backup_findElementBylabel(node, "complete_time");
 	if (!b) return -1;
-    n = findElementBylabel(tree, "CompleteTime");
+    n = backup_findElementBylabel(tree, "CompleteTime");
 	if (!n) return -1;
     n->SetText(b->GetText());
 
-    b = findElementBylabel(node, "method_id");
+    b = backup_findElementBylabel(node, "method_id");
 	if (!b) return -1;
 	*method_id = atoi(b->GetText());
 

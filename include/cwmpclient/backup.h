@@ -9,7 +9,7 @@
 #define BACKUP_DIR "./backup"
 #define BACKUP_FILE BACKUP_DIR"/backup.xml"
 
-static tinyxml2::XMLElement *findElementBylabel(tinyxml2::XMLElement *element, const char *label);
+static tinyxml2::XMLElement *backup_findElementBylabel(tinyxml2::XMLElement *element, const char *label);
 
 tinyxml2::XMLElement* backup_tree_init(void);
 void backup_init(void);
@@ -26,6 +26,8 @@ int backup_remove_node(tinyxml2::XMLElement *node);
 
 void backup_add_acsurl(const char *acs_url);
 tinyxml2::XMLElement* backup_add_event(int code, std::string key, int method_id);
+tinyxml2::XMLElement* backup_add_download(std::string key, int delay, std::string file_size, std::string download_url, std::string file_type, std::string username, std::string password);
+tinyxml2::XMLElement* backup_add_upload(std::string key, int delay, std::string upload_url, std::string file_type, std::string username, std::string password);
 tinyxml2::XMLElement* backup_add_transfer_complete(std::string command_key, int fault_code, std::string start_time, int method_id);
 
 
