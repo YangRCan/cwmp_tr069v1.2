@@ -6,7 +6,6 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <curl/curl.h>
-
 #include <chrono>
 #include <thread>
 
@@ -30,7 +29,9 @@
 #include "tinyxml2.h"
 #include "config.h"
 
-cwmpInfo *cwmp;
+cwmpInfo* cwmpInfo::cwmp = nullptr;
+std::mutex cwmpInfo::create_mutex;
+cwmpInfo* cwmp;
 
 struct option arg_opts[] = {
     {"boot", no_argument, NULL, 'b'},
@@ -83,9 +84,7 @@ int main(int argc, char **argv)
         }
     }
 
-    cwmp = new cwmpInfo;
-    if (!cwmp)
-        return -1; // 分配失败
+    cwmp = cwmpInfo::getCwmpInfoInstance();//获取单实例
 
     curl_global_init(CURL_GLOBAL_ALL);//多线程不安全，只在主函数调用一次
     backup_init();              // 从备份文件中加载uploads、downloads、events .etc.

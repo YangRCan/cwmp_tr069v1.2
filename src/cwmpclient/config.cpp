@@ -455,6 +455,13 @@ static int config_init_acs(void)
 }
 
 /**
+ * 修改本地配置
+*/
+// void config_modify() {
+
+// }
+
+/**
  * 解析时间字符串并返回时间点
 */
 TimePoint parseTime(const char* timeStr) {

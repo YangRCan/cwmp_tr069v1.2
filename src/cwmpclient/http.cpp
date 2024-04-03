@@ -69,20 +69,6 @@ int http_client_init(void)
 /**
  * 处理HTTP GET请求响应的函数
 */
-// static size_t http_get_response(char *buffer, size_t size, size_t rxed, char **msg_in)
-// {
-//     std::string response(*msg_in);
-//     response.append(buffer, size * rxed);
-//     char *new_msg = strdup(response.c_str());
-//     if (new_msg == nullptr)
-//     {
-//         free(*msg_in);
-//         return -1;
-//     }
-//     free(*msg_in);
-//     *msg_in = new_msg;
-//     return size * rxed;
-// }
 static size_t http_get_response(void *ptr, size_t size, size_t nmemb, void *userdata)
 {
 	//参数userdata是存放数据的指针  其他三个获取内容
@@ -95,6 +81,8 @@ static size_t http_get_response(void *ptr, size_t size, size_t nmemb, void *user
 /**
  * 该函数用于发送 HTTP POST 请求并接收响应消息。msg_out 是待发送的消息，msg_in 是用于存储接收到的消息的指针
  * 若重定向会递归调用，重新发送
+ * @param msg_out 要发送的数据字符串
+ * @param msg_in 接收到的响应数据
 */
 int8_t http_send_message(std::string msg_out, std::string &msg_in)
 {

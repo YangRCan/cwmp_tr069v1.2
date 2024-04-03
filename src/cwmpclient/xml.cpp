@@ -558,7 +558,7 @@ namespace
         tx::XMLElement *b = findElementBylabel(body_in, "ParameterValueStruct");
         const char *name = NULL, *value = NULL;
         bool exe_success = true;
-        for (tx::XMLElement *n = b; n; n->NextSiblingElement())
+        for (tx::XMLElement *n = b; n; n = n->NextSiblingElement())
         {
             name = n->FirstChildElement("Name")->GetText();
             value = n->FirstChildElement("Value")->GetText();
@@ -928,7 +928,7 @@ namespace
             param_attr_struct->AccessList = (char **)malloc(sizeof(char *));
             int numOfAccess = 0;
             n = findElementBylabel(n, "string");
-            for (tx::XMLElement *target = n; target; target->NextSiblingElement("string"))
+            for (tx::XMLElement *target = n; target; target = target->NextSiblingElement("string"))
             {
                 param_attr_struct->AccessList = (char **)realloc(param_attr_struct->AccessList, sizeof(char *) * (numOfAccess + 1));
                 param_attr_struct->AccessList[numOfAccess] = strdup(target->GetText());
@@ -1040,18 +1040,18 @@ namespace
         if (b->GetText())
             delay = atoi(b->GetText());
 
-        if (download_url.empty() || file_size.empty() || command_key.empty() || file_type.empty() || username.empty() || password.empty() || delay < 0)
+        if (download_url.empty() || file_size.empty() || command_key.empty() || file_type.empty() || delay < 0)
         {
             code = FAULT_9003;
             xml_create_generic_fault_message(body_out, code, doc_out);
             return 0;
         }
-        std::regex urlRegex("^((https?|ftp|file)://)?([a-zA-Z0-9.-]+(\\.[a-zA-Z]{2,})+)(:\\d+)?(/\\S*)?$");
+        std::regex urlRegex("^(http|https)://.*");
         if (!std::regex_match(download_url, urlRegex))
         {
             code = FAULT_9003;
             xml_create_generic_fault_message(body_out, code, doc_out);
-            return -1;
+            return 0;
         }
         if (cwmp->get_download_count() >= MAX_DOWNLOAD)
         {

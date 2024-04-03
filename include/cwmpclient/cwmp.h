@@ -147,9 +147,16 @@ private:
 	int netlink_sock[2];
 	std::atomic<bool> retry_inform;
 	std::mutex thread_mtx;//线程锁，防止多线程对临界资源的同时操作
-	std::mutex inform_mtx;//给判断和修改isInfroming变量时上锁
-	std::atomic<bool> isInfroming;//当前是否正在上报，同一时刻不能同时有多个上报线程
+	std::mutex inform_mtx;//防止多线程同时执行上报函数，即同一时刻只能有一个在上报
+	std::mutex critical_resource;//临界资源锁
 	std::atomic<int> inform_num;//用于保证不重复上报，新建定期上报线程就得+1，值不大于100
+
+	static std::mutex create_mutex;//防止线程多次创建实例
+	static cwmpInfo	*cwmp; //单例懒汉式
+private:
+	cwmpInfo();
+	cwmpInfo(const cwmpInfo& it) = delete;//删除拷贝函数
+	cwmpInfo& operator=(const cwmpInfo& s) = delete;//删除赋值函数
 
 	void cwmp_periodic_inform(int inform_num_copy, long interval);
 	inline int cwmp_retry_count_interval(int retry_count);
@@ -159,25 +166,25 @@ private:
 	inline int rpc_transfer_complete(tinyxml2::XMLElement *node, int *method_id);
 	void cwmp_handle_end_session(void);
 public:
-	cwmpInfo();
 	~cwmpInfo();
-	int get_retry_count(void);
-	int get_download_count(void);
-	int get_upload_count(void);
-	std::list<event *> get_event_list(void);
-	struct deviceInfo get_device_info(void);
-	std::list<notification *> get_notifications(void);
+
+	static cwmpInfo* getCwmpInfoInstance();
+
+	const int& get_retry_count(void) const;
+	const int& get_download_count(void) const;
+	const int& get_upload_count(void) const;
+	const std::list<event *>& get_event_list(void) const;
+	const std::list<notification *>& get_notifications(void) const;
+	const struct deviceInfo& get_device_info(void) const;
 	void set_get_rpc_methods(bool flag);
 	void set_hold_requests(bool hold_requests);
 	void set_deviceid(std::string manufacturer, std::string oui, std::string product_class, std::string serial_number);
-
 
 	void cwmp_init_deviceInfo(void);
 
 	void cwmp_clean(void);
 	void cwmp_clear_event_list(void);
 	void cwmp_clear_notifications(void);
-
 
 	event *cwmp_add_event(int code, std::string key, int method_id, int backup);
 	void cwmp_remove_event(int remove_policy, int method_id);

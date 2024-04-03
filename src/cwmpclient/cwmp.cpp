@@ -21,6 +21,7 @@
 
 namespace tx = tinyxml2;
 
+// 事件列表
 event_code event_code_array[__EVENT_MAX] = {
 	[EVENT_BOOTSTRAP] = {"0 BOOTSTRAP", EVENT_SINGLE, EVENT_REMOVE_AFTER_INFORM},
 	[EVENT_BOOT] = {"1 BOOT", EVENT_SINGLE, EVENT_REMOVE_AFTER_INFORM},
@@ -50,7 +51,6 @@ cwmpInfo::cwmpInfo()
 	this->netlink_sock[0] = 0;
 	this->netlink_sock[1] = 0;
 	this->retry_inform = false;
-	this->isInfroming = false;
 	this->inform_num = 0;
 }
 
@@ -61,9 +61,22 @@ cwmpInfo::~cwmpInfo()
 }
 
 /**
+ * 静态对象指针访问函数
+*/
+cwmpInfo* cwmpInfo::getCwmpInfoInstance() {
+	std::unique_lock<std::mutex> lock(create_mutex);
+	//加锁，确保一个进程实例化对象结束后，其他进程才能进入
+	if (nullptr == cwmp)
+	{
+		cwmp = new cwmpInfo();
+	}
+	return  cwmp;
+}
+
+/**
  * 返回成员 retry_count
  */
-int cwmpInfo::get_retry_count(void)
+const int& cwmpInfo::get_retry_count(void) const
 {
 	return this->retry_count;
 }
@@ -71,7 +84,7 @@ int cwmpInfo::get_retry_count(void)
 /**
  * 返回成员 download_count
  */
-int cwmpInfo::get_download_count(void)
+const int& cwmpInfo::get_download_count(void) const
 {
 	return this->download_count;
 }
@@ -79,7 +92,7 @@ int cwmpInfo::get_download_count(void)
 /**
  * 返回成员 upload_count
  */
-int cwmpInfo::get_upload_count(void)
+const int& cwmpInfo::get_upload_count(void) const
 {
 	return this->upload_count;
 }
@@ -87,7 +100,7 @@ int cwmpInfo::get_upload_count(void)
 /**
  * 返回成员 events
  */
-std::list<event *> cwmpInfo::get_event_list(void)
+const std::list<event *>& cwmpInfo::get_event_list(void) const
 {
 	return this->events;
 }
@@ -95,7 +108,7 @@ std::list<event *> cwmpInfo::get_event_list(void)
 /**
  * 返回成员 notifications
  */
-std::list<notification *> cwmpInfo::get_notifications(void)
+const std::list<notification *>& cwmpInfo::get_notifications(void) const
 {
 	return this->notifications;
 }
@@ -103,13 +116,14 @@ std::list<notification *> cwmpInfo::get_notifications(void)
 /**
  * 返回成员 deviceInfo
  */
-deviceInfo cwmpInfo::get_device_info(void)
+const deviceInfo& cwmpInfo::get_device_info(void) const
 {
 	return this->deviceInfo;
 }
 
 /**
  * 设置成员变量get_rpc_methods的值
+ * @param flag get_rpc_methods的新值
  */
 void cwmpInfo::set_get_rpc_methods(bool flag)
 {
@@ -118,6 +132,7 @@ void cwmpInfo::set_get_rpc_methods(bool flag)
 
 /**
  * 设置成员变量hold_requests的值
+ * @param hold_requests 成员变量hold_requests的新值
  */
 void cwmpInfo::set_hold_requests(bool hold_requests)
 {
@@ -126,6 +141,10 @@ void cwmpInfo::set_hold_requests(bool hold_requests)
 
 /**
  * 设置成员deviceid的成员值
+ * @param manufacturer 厂商名称
+ * @param oui 厂商标志
+ * @param product_class 产品类型
+ * @param serial_number 序列号
  */
 void cwmpInfo::set_deviceid(std::string manufacturer, std::string oui, std::string product_class, std::string serial_number)
 {
@@ -207,7 +226,11 @@ void cwmpInfo::cwmp_clear_notifications(void)
 
 /**
  * 向events链表中添加事件
- * return: 返回该新创建的event对象
+ * @param code 事件码
+ * @param key 事件标志
+ * @param method_id 
+ * @param backup 是否备份该事件
+ * @return 返回该新创建的event对象
  */
 event *cwmpInfo::cwmp_add_event(int code, std::string key, int method_id, int backup)
 {
@@ -240,6 +263,8 @@ event *cwmpInfo::cwmp_add_event(int code, std::string key, int method_id, int ba
 
 /**
  * 移除符合特定条件(参数)的事件节点
+ * @param remove_policy 删除哪类事件
+ * @param method_id
  */
 void cwmpInfo::cwmp_remove_event(int remove_policy, int method_id)
 {
@@ -256,6 +281,14 @@ void cwmpInfo::cwmp_remove_event(int remove_policy, int method_id)
 
 /**
  * 向cwmp中的downloads列表添加下载任务
+ * @param key 命令标志
+ * @param delay 延迟时间(秒为单位)
+ * @param file_size 文件大小(字节为单位)
+ * @param download_url 下载路径
+ * @param file_type 文件类型
+ * @param username 验证用户名
+ * @param password 验证密码
+ * @param node 备份节点的指针
  */
 void cwmpInfo::cwmp_add_download(std::string key, int delay, std::string file_size, std::string download_url, std::string file_type, std::string username, std::string password, tx::XMLElement *node)
 {
@@ -276,12 +309,14 @@ void cwmpInfo::cwmp_add_download(std::string key, int delay, std::string file_si
 	this->downloads.push_back(d);
 	Log(NAME, L_NOTICE, "add download: delay = %d sec, url = %s, FileType = '%s', CommandKey = '%s'\n", delay, d->download_url.c_str(), d->file_type.c_str(), d->key.c_str());
 	// 创建定时线程去执行cwmp_download_launch函数
-	std::thread downloadThread(&cwmpInfo::cwmp_download_launch, this, d, 10);
+	std::thread downloadThread(&cwmpInfo::cwmp_download_launch, this, d, delay);
 	downloadThread.detach();
 }
 
 /**
  * 执行下载的函数
+ * @param d 下载线程对应的download结构体指针
+ * @param delay 延迟时间(秒为单位)
  */
 void cwmpInfo::cwmp_download_launch(download *d, int delay)
 {

@@ -132,7 +132,7 @@
 		},
 		"PeriodicInformTime":	{
 			"parameterType":	"dateTime",
-			"value":	"1971-02-01T02:45:56",
+			"value":	"14766524",
 			"writable":	"1",
 			"Notification":	"0",
 			"AccessList":	["Subscriber"]
@@ -146,14 +146,14 @@
 		},
 		"ConnectionRequestUsername":	{
 			"parameterType":	"string(:256)",
-			"value":	"",
+			"value":	"X_UNIONMAN-STB-XUNION123456",
 			"writable":	"1",
 			"Notification":	"0",
 			"AccessList":	["Subscriber"]
 		},
 		"ConnectionRequestPassword":	{
 			"parameterType":	"string(:256)",
-			"value":	"",
+			"value":	"1lmh0k3tkx0",
 			"writable":	"1",
 			"Notification":	"0",
 			"AccessList":	["Subscriber"]
