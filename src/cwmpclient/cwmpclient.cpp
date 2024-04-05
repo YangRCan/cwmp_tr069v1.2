@@ -66,7 +66,7 @@ int main(int argc, char **argv)
         switch (character)
         {
         case 'b':
-            startEvent |= START_BOOT; // 启动上报
+            startEvent |= START_BOOT; // 启动时上报
             break;
         case 'f':
             foreground = true;
