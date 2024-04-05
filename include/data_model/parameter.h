@@ -12,7 +12,7 @@ extern "C"{
 // #include<cjson/cJSON.h>
 #include <cJSON.h>
 
-#define DATAFILE "../data.json"
+#define DATAFILE "./data.json"
 
 // 对parameter的权限
 #define READONLY 0

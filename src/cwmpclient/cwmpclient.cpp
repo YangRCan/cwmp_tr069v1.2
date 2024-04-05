@@ -16,13 +16,15 @@
 #include <fcntl.h>
 #include <sys/file.h>
 #include <locale.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <pthread.h>
 #endif
 
 #include "cwmpclient.h"
 #include "cwmp.h"
 #include "backup.h"
 #include "CwmpConfig.h"
-#include "json.h"
 #include "log.h"
 #include "time_tool.h"
 #include "xml.h"
@@ -84,42 +86,49 @@ int main(int argc, char **argv)
         }
     }
 
-    cwmp = cwmpInfo::getCwmpInfoInstance();//获取单实例
-
-    curl_global_init(CURL_GLOBAL_ALL);//多线程不安全，只在主函数调用一次
-    backup_init();              // 从备份文件中加载uploads、downloads、events .etc.
-    config_load();
-
-    // 根据输入参数添加
-    if (startEvent & START_BOOT)
-    {
-        cwmp->cwmp_add_event(EVENT_BOOT, "", 0, EVENT_BACKUP);
-        cwmp->cwmp_add_inform_timer(1000); // 设置一个 inform 定时器，每隔 10 毫秒触发一次
-    }
-    if (startEvent & START_GET_RPC_METHOD)
-    {
-        cwmp->set_get_rpc_methods(true); // 设置cwmp对象中get_rpc_methods的值为true
-        cwmp->cwmp_add_event(EVENT_PERIODIC, "", 0, EVENT_BACKUP);
-        cwmp->cwmp_add_inform_timer(1000);
-    }
-
 // 确保只有一个程序在运行，若没有管理员权限，退出
 #ifdef __linux__
-    int fd = open("/var/run/easycwmp.pid", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-    if (fd == -1)
-        exit(EXIT_FAILURE);
-    if (flock(fd, LOCK_EX | LOCK_NB) == -1)
-        exit(EXIT_SUCCESS);
-    if (fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC) < 0)
-        Log(NAME, L_NOTICE, "error in fcntl\n");
-    setlocale(LC_CTYPE, "");
-    umask(0037);
+    // int fd = open("/var/run/easycwmp.pid", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+    // if (fd == -1)
+    //     exit(EXIT_FAILURE);
+    // if (flock(fd, LOCK_EX | LOCK_NB) == -1)
+    //     exit(EXIT_SUCCESS);
+    // if (fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC) < 0)
+    //     Log(NAME, L_NOTICE, "error in fcntl\n");
+    // setlocale(LC_CTYPE, "");
+    // umask(0037);
 
     if (getuid() != 0)
     {
         Log(NAME, L_DEBUG, "Please run %s as root\n", NAME);
         exit(EXIT_FAILURE);
     }
+
+    pid_t pid, sid;
+    pid = fork();
+    if (pid < 0) {
+        Log(NAME, L_DEBUG, "fork() returned error\n");
+        exit(EXIT_FAILURE);
+    }
+    if (pid > 0) {
+        Log(NAME, L_DEBUG, "Exit parent process\n");
+        exit(EXIT_SUCCESS);//退出
+    }
+
+    sid = setsid();
+    if (sid < 0) {
+        Log(NAME, L_DEBUG, "setsid() returned error\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if ((chdir("/system/cwmp/client")) < 0) {
+		Log(NAME, L_DEBUG, "chdir() returned error\n");
+        exit(EXIT_FAILURE);
+    }
+
+    close(STDIN_FILENO);
+    close(STDOUT_FILENO);
+    close(STDERR_FILENO);
 #elif _WIN32
     HANDLE hMutex = CreateMutex(NULL, TRUE, TEXT(NAME));
     if (GetLastError() == ERROR_ALREADY_EXISTS)
@@ -145,11 +154,32 @@ int main(int argc, char **argv)
     }
 #endif
 
+    cwmp = cwmpInfo::getCwmpInfoInstance();//获取单实例
+
+    curl_global_init(CURL_GLOBAL_ALL);//多线程不安全，只在主函数调用一次
+    backup_init();              // 从备份文件中加载uploads、downloads、events .etc.
+    config_load();
+
+    // 根据输入参数添加
+    if (startEvent & START_BOOT)
+    {
+        cwmp->cwmp_add_event(EVENT_BOOT, "", 0, EVENT_BACKUP);
+        cwmp->cwmp_add_inform_timer(1000); // 设置一个 inform 定时器，每隔 10 毫秒触发一次
+    }
+    if (startEvent & START_GET_RPC_METHOD)
+    {
+        cwmp->set_get_rpc_methods(true); // 设置cwmp对象中get_rpc_methods的值为true
+        cwmp->cwmp_add_event(EVENT_PERIODIC, "", 0, EVENT_BACKUP);
+        cwmp->cwmp_add_inform_timer(1000);
+    }
+
 #ifdef _WIN32
     CloseHandle(hMutex);
     ExitThread(0);//主动退出主线程
+#elif __linux__
+    Log(NAME, L_DEBUG, "Exit the child process and leave the task to the thread\n");
+    pthread_exit(NULL);//退出子进程，剩下的事情由各个线程做
 #endif
-    
     
     return 0;
 }

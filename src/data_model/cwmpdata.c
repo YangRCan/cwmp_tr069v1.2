@@ -151,14 +151,14 @@ int main(int argc, char *argv[])
                 {
                     char *str;
                     ExecuteResult rlt = operates[i].function(argv[2], &str);
-                    if(rlt.status) printf("{ \" parameter \" : \" %s \"} New successfully created, instance number: %s", argv[2], str);
+                    if(rlt.status) printf("{ \" parameter \" : \" %s \"} New successfully created, instance number: %s.\n", argv[2], str);
                     save_data();
                     break;
                 }
                 else if (argc == 3 && strcmp(operate, "delete") == 0)
                 {
                     ExecuteResult rlt = operates[i].function(argv[2]);
-                    if(rlt.status) printf("{ \" parameter \" : \" %s \"} has been deleted ", argv[2]);
+                    if(rlt.status) printf("{ \" parameter \" : \" %s \"} has been deleted.\n", argv[2]);
                     save_data();
                     break;
                 }

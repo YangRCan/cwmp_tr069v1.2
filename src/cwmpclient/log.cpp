@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdarg.h> //标准 C 库，提供处理变长参数的功能
+#include "log.h"
 
 #ifdef __linux__
 #include <syslog.h>
@@ -20,7 +21,6 @@ static const int log_class[] = { // 日志级别对应系统日志级别
 #include <Windows.h>
 #endif
 
-#include "log.h"
 
 static const char *log_str[] = {
     [L_CRIT] = "CRITICAL", // 数组 log_str 的索引 L_CRIT 对应 "CRITICAL" 字符串

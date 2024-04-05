@@ -39,7 +39,7 @@
 		},
 		"ManufacturerOUI":	{
 			"parameterType":	"string(6)",
-			"value":	"X_UNIONMAN",
+			"value":	"XUNION",
 			"writable":	"0",
 			"Notification":	"2",
 			"AccessList":	["Subscriber"]
@@ -53,21 +53,21 @@
 		},
 		"SerialNumber":	{
 			"parameterType":	"string(:64)",
-			"value":	"XUNION123456",
+			"value":	"XUNION666666666",
 			"writable":	"0",
 			"Notification":	"2",
 			"AccessList":	["Subscriber"]
 		},
 		"HardwareVersion":	{
 			"parameterType":	"string(:64)",
-			"value":	"example_hw_version",
+			"value":	"1.0",
 			"writable":	"0",
 			"Notification":	"2",
 			"AccessList":	["Subscriber"]
 		},
 		"SoftwareVersion":	{
 			"parameterType":	"string(:64)",
-			"value":	"example_sw_version",
+			"value":	"1.0",
 			"writable":	"0",
 			"Notification":	"2",
 			"AccessList":	["Subscriber"]

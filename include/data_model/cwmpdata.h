@@ -19,7 +19,7 @@
     "\t-----\tupload [url] [fileType] [username] [password]\n"                                               \
     "\t-----\tfactory_reset\n"                                                                               \
     "\t-----\treboot\n"                                                                                      \
-    "\t-----\tinform [parameter|device_id]"
+    "\t-----\tinform [parameter|device_id]\n"
 
 #include "parameter.h"
 

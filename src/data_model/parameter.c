@@ -443,7 +443,7 @@ ExecuteResult addObject(const char *path, char **instanceNumber)
 {
     ExecuteResult result;
     result.fault_code = FAULT_0;
-    result.status;
+    result.status = 0;
     int length = strlen(path);
     if (path[length - 1] != '.')
     {
@@ -534,11 +534,11 @@ ExecuteResult downloadFile(const char *url, const char *fileType, const char *fi
         result.fault_code = FAULT_9003;
         return result;
     }
+    unsigned long long freeSpace = 0; // 剩余空间
 
 #ifdef _WIN32
     // 默认下载到的路径
     download_dir = strdup("./tmp");
-    unsigned long long freeSpace = 0; // 剩余空间
     // 路径不存在，创建
     if (CreateDirectory(download_dir, NULL) == 0)
     {
@@ -554,8 +554,8 @@ ExecuteResult downloadFile(const char *url, const char *fileType, const char *fi
     {
         freeSpace = freeBytesAvailable.QuadPart; // 这里需要根据系统调用获取空间大小 以字节为单位
     }
-#else
-    download_dir = strdup("/data/update");
+#elif defined(__ANDROID__)
+    download_dir = strdup("/cache/update");
     if (access(download_dir, F_OK) != 0)
     {
         if (mkdir(download_dir, 0777) == -1)
@@ -622,9 +622,9 @@ ExecuteResult applyDownloadFile(const char *fileType)
 #if defined(__ANDROID__)
         printf("Applying update.zip...\n");
         // 执行写入命令到/cache/recovery/command的操作
-        char *buffer[100];
+        char buffer[100];
         sprintf(buffer, "echo --update_package=%s/update.zip > /cache/recovery/command", download_dir);
-        system("echo --update_package=/cache/update/update.zip > /cache/recovery/command");
+        system(buffer);
         // 同步文件系统
         system("sync");
         // 重启到recovery模式
@@ -741,7 +741,7 @@ ExecuteResult uploadFile(const char *url, const char *fileType, const char *user
             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, file_path);
             if (username && username[0] != '\0' && password && password[0] != '\0')
             {
-                char *un_pw[100];
+                char un_pw[100];
                 snprintf(un_pw, 100, "%s:%s", username, password);
                 curl_easy_setopt(curl, CURLOPT_USERPWD, un_pw);
             }
