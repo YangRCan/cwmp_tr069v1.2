@@ -47,8 +47,10 @@ void init_dataModel()
     dataModel->name = ROOT;
 
     // 此处添加入数据模型初始化函数
-    init_tr181_object();
+    init_tr181_object();//通用数据模型要先创建
     init_tr181_parameter();
+    init_tr135_object();
+    init_tr135_parameter();
 }
 
 /**
@@ -188,15 +190,17 @@ ExecuteResult getParameter(const char *path, param_info ***param_list)
         return result;
     }
 
-    if (path[length - 1] == '.') result.fault_code = checkObjectPath() ? FAULT_0 : FAULT_9005;
-    else result.fault_code = checkParameterPath();
+    if (path[length - 1] == '.')
+        result.fault_code = checkObjectPath() ? FAULT_0 : FAULT_9005;
+    else
+        result.fault_code = checkParameterPath();
     if (result.fault_code > 0)
     {
         freePath(PATH, count);
         return result;
     }
 
-    cJSON *node = getParameterJSON();//获取路径的最后一个JSON节点
+    cJSON *node = getParameterJSON(); // 获取路径的最后一个JSON节点
     if (node)
     {
         *param_list = getParameterlistByJsonNode(node, path);
@@ -371,7 +375,8 @@ ExecuteResult setParameterAttributes(ParameterAttributeStruct *parameterAttribut
                     strcat(param.Name, ".");
                 ExecuteResult rlt = setParameterAttributes(&param, NotificationChange, AccessListChange, numOfAccess);
                 free(param.Name);
-                if(rlt.fault_code) return rlt;
+                if (rlt.fault_code)
+                    return rlt;
                 node = node->next;
             }
         }
@@ -759,7 +764,7 @@ ExecuteResult uploadFile(const char *url, const char *fileType, const char *user
     }
     free(serial);
 
-#endif // __ANDROID__
+#endif                 // __ANDROID__
     result.status = 1; // 成功
     return result;
 }
@@ -776,7 +781,7 @@ param_info **getInformParameter()
 
 /**
  * 执行恢复出厂设置命令
-*/
+ */
 ExecuteResult do_factory_reset()
 {
     ExecuteResult rlt;
@@ -796,7 +801,7 @@ ExecuteResult do_factory_reset()
 
 /**
  * 执行重启命令
-*/
+ */
 ExecuteResult do_reboot()
 {
     ExecuteResult rlt;
@@ -1167,9 +1172,19 @@ bool init_root()
     FILE *file = fopen(DATAFILE, "r");
     if (file == NULL)
     {
-        printf("fail to open file!");
-        return 0;
+        // 文件不存在，尝试重新创建该文件
+        file = fopen(DATAFILE, "w");
+        if (file == NULL)
+        {
+            printf("Failed to create file.\n");
+            return false;
+        }
+        printf("File created successfully!\n");
+        fclose(file);
+        file = NULL;
     }
+    if (file == NULL)
+        file = fopen(DATAFILE, "r"); // 创建文件后应以读方式重新打开
     fseek(file, 0, SEEK_END);
     long fileSize = ftell(file);
     fseek(file, 0, SEEK_SET);
@@ -1266,7 +1281,7 @@ void createParameterPathToJsonData(Parameter *param, char *value)
         cJSON *target = cJSON_CreateObject();
         cJSON_AddItemToObject(node, PATH[count], target);
         // cJSON_AddStringToObject(node, PATH[count], "");
-        SetParameterAttributesToJsonData(target, param, value);
+        setParameterAttributesToJsonData(target, param, value);
         save_data();
     }
 }
@@ -1274,7 +1289,7 @@ void createParameterPathToJsonData(Parameter *param, char *value)
 /**
  * 为cJSON中的参数设置属性value、writable、AccessList
  */
-void SetParameterAttributesToJsonData(cJSON *node, Parameter *param, const char *value)
+void setParameterAttributesToJsonData(cJSON *node, Parameter *param, const char *value)
 {
     // parameterType
     cJSON *target = cJSON_GetObjectItem(node, "parameterType");
@@ -1357,7 +1372,7 @@ char *createObjectToJsonData(struct Object *placeholder)
     cJSON *target = cJSON_CreateObject(); // 创建空JSON对象
 
     // 在JSON文件中获取最大实例号并加1
-    placeholder->nextPlaceholder = GetPlaceholderMaxNum(node) + 1 > placeholder->nextPlaceholder ? GetPlaceholderMaxNum(node) + 1 : placeholder->nextPlaceholder;
+    placeholder->nextPlaceholder = getPlaceholderMaxNum(node) + 1 > placeholder->nextPlaceholder ? getPlaceholderMaxNum(node) + 1 : placeholder->nextPlaceholder;
 
     // 将占位符数字转为字符串
     int len = 0, num = placeholder->nextPlaceholder;
@@ -1374,7 +1389,7 @@ char *createObjectToJsonData(struct Object *placeholder)
     placeholder->nextPlaceholder++;
 
     // 给新创建的实例补充属性
-    ObjectInstanceAttributeSupplementation(target, placeholder);
+    objectInstanceAttributeSupplementation(target, placeholder);
 
     // save_data();
 
@@ -1385,7 +1400,7 @@ char *createObjectToJsonData(struct Object *placeholder)
  * 给新创建的对象实例补充其应该有的属性(递归)
  * 参数: node是在JSON文件中新创建的实例节点；obj是数据模型中的对应的节点
  */
-void ObjectInstanceAttributeSupplementation(cJSON *node, struct Object *obj)
+void objectInstanceAttributeSupplementation(cJSON *node, struct Object *obj)
 {
     cJSON *target;
     for (size_t i = 0; i < obj->NumOfObject; i++)
@@ -1393,7 +1408,7 @@ void ObjectInstanceAttributeSupplementation(cJSON *node, struct Object *obj)
         if (strcmp(obj->child_object[i].name, "{i}") == 0)
             continue;
         target = cJSON_CreateObject();
-        ObjectInstanceAttributeSupplementation(target, &(obj->child_object[i]));
+        objectInstanceAttributeSupplementation(target, &(obj->child_object[i]));
         cJSON_AddItemToObject(node, obj->child_object[i].name, target);
     }
 
@@ -1401,14 +1416,14 @@ void ObjectInstanceAttributeSupplementation(cJSON *node, struct Object *obj)
     {
         target = cJSON_CreateObject();
         cJSON_AddItemToObject(node, obj->child_parameter[i].name, target);
-        SetParameterAttributesToJsonData(target, &(obj->child_parameter[i]), "");
+        setParameterAttributesToJsonData(target, &(obj->child_parameter[i]), "");
     }
 }
 
 /**
  * 从JSON文件中取出某占位符位置的最大实例号
  */
-int GetPlaceholderMaxNum(cJSON *node)
+int getPlaceholderMaxNum(cJSON *node)
 {
     cJSON *child = node->child;
     int maxNum = 0;
@@ -1647,7 +1662,7 @@ ParameterAttributeStruct **getAttributesFromJson(const char *parameter)
 
 /**
  * 从JSON文件中获取上报参数，返回param_info指针数组
-*/
+ */
 param_info **getInfoParamFromJson(const char *parameter)
 {
     int length = strlen(parameter), count = 0, index = 1;
@@ -1672,7 +1687,8 @@ param_info **getInfoParamFromJson(const char *parameter)
     if (cJSON_GetObjectItemCaseSensitive(node, "parameterType"))
     {
         int n = atoi(cJSON_GetObjectItemCaseSensitive(node, "Notification")->valuestring);
-        if(n == 0) return NULL;
+        if (n == 0)
+            return NULL;
         // 是参数，直接封装返回
         param_info **info_param = (param_info **)calloc(2, sizeof(param_info *));
         info_param[0] = (param_info *)malloc(sizeof(param_info));
@@ -1719,13 +1735,14 @@ param_info **getInfoParamFromJson(const char *parameter)
 
 /**
  * 获取json对象下的所有参数，若传入的node就是参数，着返回自身数据
-*/
+ */
 param_info **getParameterlistByJsonNode(cJSON *node, const char *p_name)
 {
-    param_info **pf = (param_info **)malloc(sizeof(param_info*));
+    param_info **pf = (param_info **)malloc(sizeof(param_info *));
     pf[0] = NULL;
-    if(cJSON_GetObjectItemCaseSensitive(node, "parameterType")) {//完整参数路径
-        pf = (param_info **)realloc(pf, sizeof(param_info*) * 2);
+    if (cJSON_GetObjectItemCaseSensitive(node, "parameterType"))
+    { // 完整参数路径
+        pf = (param_info **)realloc(pf, sizeof(param_info *) * 2);
         pf[0] = (param_info *)malloc(sizeof(param_info));
         pf[0]->name = strdup(p_name);
         pf[0]->fault_code = FAULT_0;
@@ -1733,7 +1750,9 @@ param_info **getParameterlistByJsonNode(cJSON *node, const char *p_name)
         pf[0]->data = strdup(cJSON_GetObjectItemCaseSensitive(node, "value")->valuestring);
         pf[1] = NULL;
         return pf;
-    } else {//不完整
+    }
+    else
+    { // 不完整
         int length = 0;
         cJSON *child = node->child;
         while (child)

@@ -8,7 +8,8 @@
 extern "C"{
 #endif
 
-
+void init_tr135_object();
+void init_tr135_parameter();
 
 #if defined(__cplusplus) || defined(c_plusplus)
 }

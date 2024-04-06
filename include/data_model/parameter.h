@@ -9,7 +9,6 @@ extern "C"{
 #endif
 
 #include <stdbool.h>
-// #include<cjson/cJSON.h>
 #include <cJSON.h>
 
 #define DATAFILE "./data.json"
@@ -152,10 +151,10 @@ bool init_root();
 ExecuteResult save_data();
 cJSON *createObjectPathToJsonData();
 void createParameterPathToJsonData(Parameter *param, char *value);
-void SetParameterAttributesToJsonData(cJSON *node, Parameter *param, const char *value);
+void setParameterAttributesToJsonData(cJSON *node, Parameter *param, const char *value);
 char *createObjectToJsonData(struct Object *placeholder);
-void ObjectInstanceAttributeSupplementation(cJSON *node, struct Object *obj);
-int GetPlaceholderMaxNum(cJSON *node);
+void objectInstanceAttributeSupplementation(cJSON *node, struct Object *obj);
+int getPlaceholderMaxNum(cJSON *node);
 cJSON *getParameterJSON();
 ParameterInfoStruct **getChildFromJson(const char *path);
 void getDescendantsFromJson(const char *path, cJSON *object, ParameterInfoStruct ***List, int *const index);
@@ -169,7 +168,6 @@ char **getSubStrings(const char *input, int *count);
 char *concatenateStrings(const char *str1, const char *str2);
 bool isNumeric(const char *str);
 int download_file_to_dir(const char *url, const char *username, const char *password, const char *dir);
-// void getExecutionStatus(int *status, int *fault);
 
 
 #if defined(__cplusplus)||defined(c_plusplus)

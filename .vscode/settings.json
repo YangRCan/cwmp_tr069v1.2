@@ -83,7 +83,9 @@
         "condition_variable": "cpp",
         "mutex": "cpp",
         "bitset": "cpp",
-        "regex": "cpp"
+        "regex": "cpp",
+        "unistd.h": "c",
+        "curl.h": "c"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }

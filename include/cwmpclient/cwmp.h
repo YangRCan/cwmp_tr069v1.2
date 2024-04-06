@@ -123,10 +123,6 @@ struct deviceInfo
 	std::string serial_number;
 };
 
-// struct scheduled_inform {
-// 	char *key;
-// };
-
 class cwmpInfo
 {
 private:

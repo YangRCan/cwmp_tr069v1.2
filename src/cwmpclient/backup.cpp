@@ -141,7 +141,8 @@ void backup_load_event(void)
 
                 if (event_num)
                 {
-                    if (e = cwmp->cwmp_add_event(atoi(event_num), key, method_id, EVENT_NO_BACKUP))
+                    e = cwmp->cwmp_add_event(atoi(event_num), key, method_id, EVENT_NO_BACKUP);
+                    if (e != NULL)
                     {
                         e->backup_node = elem;
                     }

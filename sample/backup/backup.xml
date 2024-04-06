@@ -1,0 +1,6 @@
+<backup_file>
+    <cwmp>
+        <acs_url>http://192.168.1.100:7547</acs_url>
+        <software_version>example_sw_version</software_version>
+    </cwmp>
+</backup_file>

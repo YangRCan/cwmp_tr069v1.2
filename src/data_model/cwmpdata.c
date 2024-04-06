@@ -139,8 +139,8 @@ int main(int argc, char *argv[])
                 param_info **inform_parameter = NULL;
                 if (argc == 2 || strcmp(argv[2], "parameter") == 0)
                     inform_parameter = getInformParameter();
-                else if (argc > 2 && strcmp(argv[2], "device_id"))
-                    inform_parameter;
+                // else if (argc > 2 && strcmp(argv[2], "device_id"))
+                //     inform_parameter;
                 if(!inform_parameter) break;
                 for (size_t i = 0; inform_parameter[i] != NULL ; i++)
                 {

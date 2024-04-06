@@ -42,6 +42,8 @@ void init_tr181_object()
     addObjectToDataModel(concatenateStrings(ROOT, ".WiFi.AccessPoint."), WRITABLE, PresentObject, NULL);
     addObjectToDataModel(concatenateStrings(ROOT, ".WiFi.AccessPoint.{i}."), WRITABLE, PresentObject, NULL);
     addObjectToDataModel(concatenateStrings(ROOT, ".WiFi.AccessPoint.{i}.Security."), READONLY, PresentObject, NULL);
+
+    addObjectToDataModel(concatenateStrings(ROOT, ".Services."), READONLY, PresentObject, NULL);
 }
 
 void init_tr181_parameter()
@@ -62,7 +64,7 @@ void init_tr181_parameter()
     addParameterToDataModel(concatenateStrings(ROOT, ".DeviceInfo.MemoryStatus.Free"), "", READONLY, Notification_Off, "unsignedInt", NULL);
 
     // ManagementServer
-    addParameterToDataModel(concatenateStrings(ROOT, ".ManagementServer.URL"), "http://120.25.230.119/", WRITABLE, Notification_Off, "string(:256)", NULL);
+    addParameterToDataModel(concatenateStrings(ROOT, ".ManagementServer.URL"), "http://120.25.230.119:7547", WRITABLE, Notification_Off, "string(:256)", NULL);
     addParameterToDataModel(concatenateStrings(ROOT, ".ManagementServer.Username"), "admin", WRITABLE, Notification_Off, "string(:256)", NULL);
     addParameterToDataModel(concatenateStrings(ROOT, ".ManagementServer.Password"), "admin", WRITABLE, Notification_Off, "string(:256)", NULL);
     addParameterToDataModel(concatenateStrings(ROOT, ".ManagementServer.PeriodicInformEnable"), "true", WRITABLE, Notification_Off, "boolean", NULL);

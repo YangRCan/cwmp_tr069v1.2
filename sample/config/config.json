@@ -1,0 +1,29 @@
+{
+	"local":	{
+		"enable":	1,
+		"interface":	"enp0s",
+		"port":	7547,
+		"date_format":	"%Y-%m-%dT%H:%M:%S",
+		"authentication":	"Digest",
+		"logging_level":	"5",
+		"username":	"tr069Client",
+		"password":	"123456",
+		"url":	"192.168.2.103"
+	},
+	"acs":	{
+		"url":	"http://192.168.1.100:7547",
+		"username":	"yangrongcan",
+		"password":	"unionman",
+		"periodic_enable":	1,
+		"periodic_interval":	300,
+		"periodic_time":	"1971-02-01T02:45:56"
+	},
+	"device":	{
+		"manufacturer":	"unionman",
+		"oui":	"XUNION",
+		"product_class":	"STB",
+		"serial_number":	"XUNION666666666",
+		"hardware_version":	"1.0",
+		"software_version":	"1.0"
+	}
+}
