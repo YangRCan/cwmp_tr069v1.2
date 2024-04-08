@@ -69,7 +69,7 @@ int main(int argc, char **argv)
             startEvent |= START_BOOT; // 启动时上报
             break;
         case 'f':
-            foreground = true;
+            foreground = true; //是否为前台运行
             break;
         case 'g':
             startEvent |= START_GET_RPC_METHOD; // 启动时获取ACS的方法
@@ -88,47 +88,49 @@ int main(int argc, char **argv)
 
 // 确保只有一个程序在运行，若没有管理员权限，退出
 #ifdef __linux__
-    // int fd = open("/var/run/easycwmp.pid", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-    // if (fd == -1)
-    //     exit(EXIT_FAILURE);
-    // if (flock(fd, LOCK_EX | LOCK_NB) == -1)
-    //     exit(EXIT_SUCCESS);
-    // if (fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC) < 0)
-    //     Log(NAME, L_NOTICE, "error in fcntl\n");
-    // setlocale(LC_CTYPE, "");
-    // umask(0037);
+    // 对文件进行加锁，确保只存在一个该程序进程
+    int fd = open(CONFIGFILE, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+    if (fd == -1)
+        exit(EXIT_FAILURE);
+    if (flock(fd, LOCK_EX | LOCK_NB) == -1)
+        exit(EXIT_SUCCESS);
+    if (fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC) < 0)
+        Log(NAME, L_NOTICE, "error in fcntl\n");
+    setlocale(LC_CTYPE, "");
+    umask(0037);
 
     if (getuid() != 0)
     {
         Log(NAME, L_DEBUG, "Please run %s as root\n", NAME);
         exit(EXIT_FAILURE);
     }
+    if(!foreground) {
+        pid_t pid, sid;
+        pid = fork();
+        if (pid < 0) {
+            Log(NAME, L_DEBUG, "fork() returned error\n");
+            exit(EXIT_FAILURE);
+        }
+        if (pid > 0) {
+            Log(NAME, L_DEBUG, "Exit parent process\n");
+            exit(EXIT_SUCCESS);//退出
+        }
 
-    pid_t pid, sid;
-    pid = fork();
-    if (pid < 0) {
-        Log(NAME, L_DEBUG, "fork() returned error\n");
-        exit(EXIT_FAILURE);
-    }
-    if (pid > 0) {
-        Log(NAME, L_DEBUG, "Exit parent process\n");
-        exit(EXIT_SUCCESS);//退出
-    }
+        sid = setsid();
+        if (sid < 0) {
+            Log(NAME, L_DEBUG, "setsid() returned error\n");
+            exit(EXIT_FAILURE);
+        }
 
-    sid = setsid();
-    if (sid < 0) {
-        Log(NAME, L_DEBUG, "setsid() returned error\n");
-        exit(EXIT_FAILURE);
-    }
+        if ((chdir("/data/cwmp")) < 0) {
+            Log(NAME, L_DEBUG, "chdir() returned error\n");
+            exit(EXIT_FAILURE);
+        }
 
-    if ((chdir("/system/cwmp/client")) < 0) {
-		Log(NAME, L_DEBUG, "chdir() returned error\n");
-        exit(EXIT_FAILURE);
+        close(STDIN_FILENO);
+        close(STDOUT_FILENO);
+        close(STDERR_FILENO);
     }
-
-    close(STDIN_FILENO);
-    close(STDOUT_FILENO);
-    close(STDERR_FILENO);
 #elif _WIN32
     HANDLE hMutex = CreateMutex(NULL, TRUE, TEXT(NAME));
     if (GetLastError() == ERROR_ALREADY_EXISTS)

@@ -378,8 +378,9 @@ void backup_update_all_complete_time_transfer_complete(void)
  */
 void backup_check_acs_url(void)
 {
+    tx::XMLElement *cwmp_node = nullptr;
     tx::XMLElement *root = backup_doucment.RootElement();
-    tx::XMLElement *cwmp_node = root->FirstChildElement("cwmp");
+    if(root) cwmp_node = root->FirstChildElement("cwmp");
     if (!cwmp_node)
     {
         backup_add_acsurl(config->acs->url.c_str()); // 更新备份文件中添加 ACS URL
