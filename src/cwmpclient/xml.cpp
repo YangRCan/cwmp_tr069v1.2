@@ -59,7 +59,7 @@ namespace
         {"Upload", xml_upload},
         {"Reboot", xml_reboot},
         {"FactoryReset", xml_factory_reset},
-        // { "ScheduleInform", xml_schedule_inform },
+        { "ScheduleInform", xml_schedule_inform },
     };
 
     /**
